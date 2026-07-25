@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Nota de Compra / Recibo - CIM</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f6f9;color:#1a1a1a;font-size:14px}
+input,select,textarea{font-family:inherit;border:1px solid #d0d5dd;border-radius:6px;padding:7px 10px;font-size:13px;color:#1a1a1a;outline:none;background:#fff;width:100%;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:#6ec25b;box-shadow:0 0 0 2px #6ec25b22}
+button{font-family:inherit;cursor:pointer;border:none;transition:all .15s}
+.btn-g{background:#6ec25b;color:#fff;border-radius:8px;padding:8px 18px;font-weight:700;font-size:13px}
+.btn-n{background:#071740;color:#fff;border-radius:8px;padding:8px 18px;font-weight:700;font-size:13px}
+.btn-ghost{background:#fff;color:#071740;border:1.5px solid #ccc;border-radius:8px;padding:8px 16px;font-weight:600;font-size:13px}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:flex;align-items:flex-end;justify-content:center}
+.modal-box{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;padding:18px}
+.catalog-item{padding:8px 10px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px;transition:background .1s;gap:8px}
+.catalog-item:hover{background:#f0f7ee}
+.toggle-pill{display:flex;gap:6px;flex-wrap:wrap}
+.tpill{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid #ccc;background:#fff;color:#888}
+.tpill.on{background:#071740;color:#fff;border-color:#071740}
+.seer-badge{background:#e8f0fe;color:#1a56b0;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600}
+.wifi-badge{background:#e8f5e9;color:#2e7d32;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600}
+.item-row{background:#f0f7ee;border:1px solid #6ec25b44;border-radius:8px;padding:9px 11px;margin-bottom:6px;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.sig-wrap{background:#fff;border:1.5px dashed #ccc;border-radius:10px;padding:10px;margin-bottom:14px}
+.sig-canvas{width:100%;height:160px;border-radius:8px;background:#fcfcfc;border:1px solid #e0e0e0;touch-action:none;display:block}
+@media print{
+  .no-print{display:none!important}
+  body{background:#fff}
+  #print-area{padding:0!important;border:none!important;border-radius:0!important}
+  @page{margin:1.5cm;size:A4}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+// ═══════════ CONSTANTS ═══════════
+const N='#071740',G='#6ec25b',L='#f0f7ee';
+const STEPS=['Config','Cliente','Conceptos','Firma','Vista Previa'];
+const TIPOS_DOC=[
+  {id:'anticipo',l:'Recibo de Anticipo',d:'El cliente adelanta dinero, aún no se entrega nada'},
+  {id:'entrega',l:'Nota de Compra / Entrega',d:'Se entrega equipo, material o servicio'},
+  {id:'final',l:'Pago Final / Liquidación',d:'Se cobra el saldo restante'},
+  {id:'completo',l:'Recibo Completo',d:'Entrega + pago, todo junto (venta de contado)'},
+];
+const CATEGORIAS=[
+  {id:'equipos',l:'Equipos'},
+  {id:'mantenimiento',l:'Mantenimiento'},
+  {id:'materiales',l:'Materiales'},
+  {id:'otro',l:'Otro'},
+];
+const PAGOS=[{id:'efectivo',l:'💵 Efectivo'},{id:'transferencia',l:'🏦 Transferencia'},{id:'tarjeta',l:'💳 Tarjeta'},{id:'otro',l:'Otro'}];
+const QUOTERS={
+  miguel:{nombre:'Miguel Ángel Peña Moreno',tel:'811 066 3003',email:'proyectos@climasinvertermonterrey.com'},
+  beatriz:{nombre:'Lic. Beatriz Moreno',tel:'811 079 8926',email:'ventas@climasinvertermonterrey.com'},
+};
+
+// ═══════════ CATALOG (equipos) ═══════════
+const BASE_CAT=[
+{id:'cu110_1',m:'Carrier ULTRA 32',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:21,wifi:true,pL:10200,pE:null,tipo:'inv'},
+{id:'cu220_1',m:'Carrier ULTRA 32',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:21,wifi:true,pL:10200,pE:null,tipo:'inv'},
+{id:'cu220_15',m:'Carrier ULTRA 32',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:21,wifi:true,pL:13000,pE:null,tipo:'inv'},
+{id:'cu220_2',m:'Carrier ULTRA 32',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:21,wifi:true,pL:16500,pE:null,tipo:'inv'},
+{id:'cx110_1',m:'Carrier PURON X',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:19,wifi:true,pL:7350,pE:7950,tipo:'inv'},
+{id:'cx220_1',m:'Carrier PURON X',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:19,wifi:true,pL:7200,pE:7800,tipo:'inv'},
+{id:'cx220_15',m:'Carrier PURON X',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:19,wifi:true,pL:10150,pE:10850,tipo:'inv'},
+{id:'cx220_2',m:'Carrier PURON X',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:19,wifi:true,pL:13700,pE:14500,tipo:'inv'},
+{id:'ce_15',m:'Carrier ELITE',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:19,wifi:false,pL:13900,pE:14600,tipo:'inv'},
+{id:'cc_1',m:'Carrier Cool Easy',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:18,wifi:false,pL:13789,pE:14389,tipo:'inv'},
+{id:'cc_15',m:'Carrier Cool Easy',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:18,wifi:false,pL:20469,pE:21169,tipo:'inv'},
+{id:'cc_3',m:'Carrier Cool Easy',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:18,wifi:false,pL:27850,pE:29350,tipo:'inv'},
+{id:'cp110_1',m:'Carrier Puron R-410',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:8298,pE:8898,tipo:'conv'},
+{id:'cp220_1',m:'Carrier Puron R-410',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:8298,pE:8898,tipo:'conv'},
+{id:'cp220_15',m:'Carrier Puron R-410',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:8060,pE:8760,tipo:'conv'},
+{id:'cp220_2',m:'Carrier Puron R-410',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:15665,pE:16465,tipo:'conv'},
+{id:'ci19_110',m:'CIAC 19 SEERS WiFi',mod:'Inverter R32',sf:'FC',v:'110V',t:1,seer:19,wifi:true,pL:7246,pE:7846,tipo:'inv'},
+{id:'ci19_1',m:'CIAC 19 SEERS WiFi',mod:'Inverter R32',sf:'FC',v:'220V',t:1,seer:19,wifi:true,pL:7554,pE:8154,tipo:'inv'},
+{id:'ci19_15',m:'CIAC 19 SEERS WiFi',mod:'Inverter R32',sf:'FC',v:'220V',t:1.5,seer:19,wifi:true,pL:8870,pE:9570,tipo:'inv'},
+{id:'ci19_2',m:'CIAC 19 SEERS WiFi',mod:'Inverter R32',sf:'FC',v:'220V',t:2,seer:19,wifi:true,pL:14146,pE:14946,tipo:'inv'},
+{id:'ci17_15',m:'CIAC 17 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:17,wifi:false,pL:8570,pE:9270,tipo:'inv'},
+{id:'ci20_15',m:'CIAC 20 SEERS WiFi',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:20,wifi:true,pL:9070,pE:9770,tipo:'inv'},
+{id:'cfix110_1',m:'CIAC FIX R-410',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:5538,pE:6138,tipo:'conv'},
+{id:'cfix220_1',m:'CIAC FIX R-410',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:4700,pE:5300,tipo:'conv'},
+{id:'cfix220_15',m:'CIAC FIX R-410',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:7450,pE:8150,tipo:'conv'},
+{id:'cfix220_2',m:'CIAC FIX R-410',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:11771,pE:12571,tipo:'conv'},
+{id:'hi110_1',m:'Hisense',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:17,wifi:true,pL:5300,pE:5900,tipo:'inv'},
+{id:'hi220_1',m:'Hisense',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:17,wifi:true,pL:5300,pE:null,tipo:'inv'},
+{id:'hi220_15',m:'Hisense',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:17,wifi:true,pL:8500,pE:9200,tipo:'inv'},
+{id:'hi220_2',m:'Hisense',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:17,wifi:true,pL:11010,pE:11810,tipo:'inv'},
+{id:'hi220_3',m:'Hisense',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:17,wifi:true,pL:22290,pE:23790,tipo:'inv'},
+{id:'hic110_1',m:'Hisense',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:5120,pE:5720,tipo:'conv'},
+{id:'hic220_1',m:'Hisense',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:4730,pE:5330,tipo:'conv'},
+{id:'hic220_15',m:'Hisense',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:7565,pE:8265,tipo:'conv'},
+{id:'hic220_2',m:'Hisense',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:10120,pE:10920,tipo:'conv'},
+{id:'mv32_110_1',m:'Mirage V32',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:17,wifi:false,pL:6290,pE:null,tipo:'inv'},
+{id:'mv32_220_1',m:'Mirage V32',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:17,wifi:false,pL:6240,pE:null,tipo:'inv'},
+{id:'mv32_220_15',m:'Mirage V32',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:17,wifi:false,pL:8990,pE:null,tipo:'inv'},
+{id:'mv32_220_2',m:'Mirage V32',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:17,wifi:false,pL:11650,pE:null,tipo:'inv'},
+{id:'mx32_110_1',m:'Mirage Inverter X32',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:18,wifi:false,pL:6600,pE:7200,tipo:'inv'},
+{id:'mx32_220_1',m:'Mirage Inverter X32',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:18,wifi:false,pL:6350,pE:6950,tipo:'inv'},
+{id:'mx32_220_15',m:'Mirage Inverter X32',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:18,wifi:false,pL:9220,pE:9920,tipo:'inv'},
+{id:'mx32_220_2',m:'Mirage Inverter X32',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:18,wifi:false,pL:11950,pE:12750,tipo:'inv'},
+{id:'mn_110_1',m:'Mirage NEO Gris',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:19,wifi:false,pL:7900,pE:null,tipo:'inv'},
+{id:'mn_220_1',m:'Mirage NEO Gris',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:19,wifi:false,pL:8190,pE:null,tipo:'inv'},
+{id:'mn_220_15',m:'Mirage NEO Gris',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:19,wifi:false,pL:10630,pE:null,tipo:'inv'},
+{id:'mn_220_2',m:'Mirage NEO Gris',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:19,wifi:false,pL:14490,pE:null,tipo:'inv'},
+{id:'mm22_110_1',m:'Mirage Magnum 22',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:22,wifi:false,pL:8990,pE:9590,tipo:'inv'},
+{id:'mm22_220_1',m:'Mirage Magnum 22',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:22,wifi:false,pL:8780,pE:9380,tipo:'inv'},
+{id:'mm22_220_15',m:'Mirage Magnum 22',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:22,wifi:false,pL:11840,pE:12540,tipo:'inv'},
+{id:'mm22_220_2',m:'Mirage Magnum 22',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:22,wifi:false,pL:15670,pE:16470,tipo:'inv'},
+{id:'mm18_3',m:'Mirage Magnum 18',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:18,wifi:false,pL:25540,pE:27040,tipo:'inv'},
+{id:'mi17_3',m:'Mirage Inverter 17',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:17,wifi:false,pL:21050,pE:22550,tipo:'inv'},
+{id:'ml_110_1',m:'Mirage Life 12+',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:5810,pE:6410,tipo:'conv'},
+{id:'ml_220_1',m:'Mirage Life 12+',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:5400,pE:6000,tipo:'conv'},
+{id:'ml_220_15',m:'Mirage Life 12+',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:8790,pE:9490,tipo:'conv'},
+{id:'ml_220_2',m:'Mirage Life 12+',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:11320,pE:12120,tipo:'conv'},
+{id:'mnex_110_1',m:'Mirage NEX',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:5090,pE:5690,tipo:'conv'},
+{id:'mnex_220_1',m:'Mirage NEX',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:5010,pE:5610,tipo:'conv'},
+{id:'mnex_220_15',m:'Mirage NEX',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:7810,pE:8510,tipo:'conv'},
+{id:'mnex_220_2',m:'Mirage NEX',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:10470,pE:11270,tipo:'conv'},
+{id:'gr110_1',m:'GREE',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:18,wifi:false,pL:8080,pE:8680,tipo:'inv'},
+{id:'gr220_1',m:'GREE',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:18,wifi:false,pL:7860,pE:8460,tipo:'inv'},
+{id:'gr220_15',m:'GREE',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:18,wifi:false,pL:10830,pE:11530,tipo:'inv'},
+{id:'gr220_2',m:'GREE',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:18,wifi:false,pL:14480,pE:15280,tipo:'inv'},
+{id:'gr220_3',m:'GREE',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:18,wifi:false,pL:24750,pE:26250,tipo:'inv'},
+{id:'grc110_1',m:'GREE R-410',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:5190,pE:5790,tipo:'conv'},
+{id:'grc220_1',m:'GREE R-410',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:4840,pE:5440,tipo:'conv'},
+{id:'grc220_15',m:'GREE R-410',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:8080,pE:8780,tipo:'conv'},
+{id:'grc220_2',m:'GREE R-410',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:10310,pE:11110,tipo:'conv'},
+{id:'grc220_3',m:'GREE R-410',mod:'Convencional',sf:'FC',v:'220V',t:3,seer:12,wifi:false,pL:23660,pE:25160,tipo:'conv'},
+{id:'lgd_1',m:'LG Dual Inverter',mod:'WiFi',sf:'FC',v:'220V',t:1,seer:21,wifi:true,pL:9878,pE:10478,tipo:'inv'},
+{id:'lgd_15',m:'LG Dual Inverter',mod:'WiFi',sf:'FC',v:'220V',t:1.5,seer:21,wifi:true,pL:12282,pE:12982,tipo:'inv'},
+{id:'lgd_2',m:'LG Dual Inverter',mod:'WiFi',sf:'FC',v:'220V',t:2,seer:21,wifi:true,pL:14203,pE:15003,tipo:'inv'},
+{id:'lge_1',m:'LG Espejo',mod:'WiFi',sf:'FC',v:'220V',t:1,seer:21,wifi:true,pL:13850,pE:14450,tipo:'inv'},
+{id:'lge_15',m:'LG Espejo',mod:'WiFi',sf:'FC',v:'220V',t:1.5,seer:21,wifi:true,pL:17100,pE:17800,tipo:'inv'},
+{id:'lge_2',m:'LG Espejo',mod:'WiFi',sf:'FC',v:'220V',t:2,seer:21,wifi:true,pL:20300,pE:21100,tipo:'inv'},
+{id:'me110_1',m:'Mabe Espejo',mod:'WiFi',sf:'FC',v:'110V',t:1,seer:20,wifi:true,pL:8990,pE:9590,tipo:'inv'},
+{id:'me220_1',m:'Mabe Espejo',mod:'WiFi',sf:'FC',v:'220V',t:1,seer:20,wifi:true,pL:8190,pE:8790,tipo:'inv'},
+{id:'me220_15',m:'Mabe Espejo',mod:'WiFi',sf:'FC',v:'220V',t:1.5,seer:20,wifi:true,pL:12390,pE:13090,tipo:'inv'},
+{id:'me220_2',m:'Mabe Espejo',mod:'WiFi',sf:'FC',v:'220V',t:2,seer:20,wifi:true,pL:15715,pE:16515,tipo:'inv'},
+{id:'mb110_1',m:'Mabe Blanco',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:18,wifi:false,pL:6100,pE:6700,tipo:'inv'},
+{id:'mb220_1',m:'Mabe Blanco',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:18,wifi:false,pL:5300,pE:5900,tipo:'inv'},
+{id:'mb220_15',m:'Mabe Blanco',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:18,wifi:false,pL:8560,pE:9260,tipo:'inv'},
+{id:'mb220_2',m:'Mabe Blanco',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:18,wifi:false,pL:11350,pE:12150,tipo:'inv'},
+{id:'mb220_3',m:'Mabe Blanco',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:18,wifi:false,pL:19050,pE:20550,tipo:'inv'},
+{id:'mbc110_1',m:'Mabe Blanco',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:4680,pE:5280,tipo:'conv'},
+{id:'mbc220_1',m:'Mabe Blanco',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:4740,pE:5340,tipo:'conv'},
+{id:'mbc220_15',m:'Mabe Blanco',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:7600,pE:8300,tipo:'conv'},
+{id:'mbc220_2',m:'Mabe Blanco',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:9525,pE:10325,tipo:'conv'},
+{id:'mbc220_3',m:'Mabe Blanco',mod:'Convencional',sf:'FC',v:'220V',t:3,seer:12,wifi:false,pL:18400,pE:19900,tipo:'conv'},
+{id:'pan110_1',m:'Panasonic 19.8 SEERS',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:19.8,wifi:false,pL:7000,pE:7600,tipo:'inv'},
+{id:'pan220_1',m:'Panasonic 19.8 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:19.8,wifi:false,pL:9200,pE:9800,tipo:'inv'},
+{id:'pan220_15',m:'Panasonic 19.8 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:19.8,wifi:false,pL:12200,pE:12900,tipo:'inv'},
+{id:'pan220_2',m:'Panasonic 19.8 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:19.8,wifi:false,pL:15500,pE:16300,tipo:'inv'},
+{id:'tri16_1',m:'Trane Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:16,wifi:false,pL:8626,pE:9226,tipo:'inv'},
+{id:'tri16_15',m:'Trane Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:16,wifi:false,pL:11272,pE:11972,tipo:'inv'},
+{id:'tri16_2',m:'Trane Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:16,wifi:false,pL:14261,pE:15061,tipo:'inv'},
+{id:'tri16_3',m:'Trane Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:16,wifi:false,pL:24342,pE:25842,tipo:'inv'},
+{id:'triae_1',m:'Trane Inverter Alta Ef.',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:20,wifi:false,pL:17442,pE:18042,tipo:'inv'},
+{id:'triae_15',m:'Trane Inverter Alta Ef.',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:20,wifi:false,pL:22557,pE:23257,tipo:'inv'},
+{id:'triae_2',m:'Trane Inverter Alta Ef.',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:20,wifi:false,pL:22085,pE:22885,tipo:'inv'},
+{id:'trc220_1',m:'Trane',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:6616,pE:7216,tipo:'conv'},
+{id:'trc220_15',m:'Trane',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:9241,pE:9941,tipo:'conv'},
+{id:'trc220_2',m:'Trane',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:11946,pE:12746,tipo:'conv'},
+{id:'trc220_3',m:'Trane',mod:'Convencional',sf:'FC',v:'220V',t:3,seer:12,wifi:false,pL:19848,pE:21348,tipo:'conv'},
+{id:'yi16_110_1',m:'York Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:16,wifi:false,pL:8229,pE:8829,tipo:'inv'},
+{id:'yi16_220_1',m:'York Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:16,wifi:false,pL:7766,pE:8366,tipo:'inv'},
+{id:'yi16_220_15',m:'York Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:16,wifi:false,pL:11052,pE:11752,tipo:'inv'},
+{id:'yi16_220_2',m:'York Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:16,wifi:false,pL:14415,pE:15215,tipo:'inv'},
+{id:'yi16_220_3',m:'York Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:16,wifi:false,pL:24694,pE:26194,tipo:'inv'},
+{id:'ytri_1',m:'York Triple Inverter',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:21,wifi:false,pL:15106,pE:15706,tipo:'inv'},
+{id:'ytri_15',m:'York Triple Inverter',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:21,wifi:false,pL:22248,pE:22948,tipo:'inv'},
+{id:'ytri_2',m:'York Triple Inverter',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:21,wifi:false,pL:24642,pE:25442,tipo:'inv'},
+{id:'yc110_1',m:'York R-410',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:6626,pE:7226,tipo:'conv'},
+{id:'yc220_1',m:'York R-410',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:6405,pE:7005,tipo:'conv'},
+{id:'yc220_15',m:'York R-410',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:9795,pE:10495,tipo:'conv'},
+{id:'yc220_2',m:'York R-410',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:12832,pE:13632,tipo:'conv'},
+{id:'wp_2',m:'Whirlpool Blanco',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:18,wifi:false,pL:8999,pE:14750,tipo:'inv'},
+{id:'tcl110_1',m:'TCL',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:17,wifi:false,pL:6050,pE:null,tipo:'inv'},
+{id:'tcl220_1',m:'TCL',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:17,wifi:false,pL:6050,pE:null,tipo:'inv'},
+{id:'tcl220_15',m:'TCL',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:17,wifi:false,pL:8570,pE:null,tipo:'inv'},
+{id:'tcl220_2',m:'TCL',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:17,wifi:false,pL:10917,pE:null,tipo:'inv'},
+{id:'tcl220_3',m:'TCL',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:17,wifi:false,pL:17171,pE:null,tipo:'inv'},
+{id:'ua110_1',m:'United Appliances 17 SEERS',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:17,wifi:false,pL:7140,pE:7740,tipo:'inv'},
+{id:'ua220_1',m:'United Appliances 17 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:17,wifi:false,pL:5230,pE:5830,tipo:'inv'},
+{id:'ua220_15',m:'United Appliances 17 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:17,wifi:false,pL:8070,pE:8770,tipo:'inv'},
+{id:'ua220_2',m:'United Appliances 17 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:17,wifi:false,pL:10650,pE:11450,tipo:'inv'},
+{id:'uac110_1',m:'United Appliances',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:4370,pE:4970,tipo:'conv'},
+{id:'uac220_1',m:'United Appliances',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:4330,pE:4930,tipo:'conv'},
+{id:'uac220_15',m:'United Appliances',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:6860,pE:7560,tipo:'conv'},
+{id:'uac220_2',m:'United Appliances',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:9050,pE:9850,tipo:'conv'},
+{id:'te220_3',m:'Tersus',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:21,wifi:false,pL:18000,pE:null,tipo:'inv'},
+];
+
+// ═══════════ UTILS ═══════════
+const fmt=n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0}).format(Math.round(n||0));
+const today=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+const uid=()=>Math.random().toString(36).slice(2);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ═══════════ STATE ═══════════
+let S={
+  step:0,
+  tipo:'entrega',
+  categoria:'equipos',
+  quoter:'miguel',
+  folio:'NC-'+new Date().getFullYear()+'-'+String(Math.floor(Math.random()*900)+100).padStart(3,'0'),
+  cli:{nombre:'',tel:'',dir:'',correo:''},
+  items:[],
+  formaPago:'efectivo',
+  totalCotizado:0,
+  notas:'',
+  firmaCliente:null,
+  firmaEntrega:null,
+  catalog:BASE_CAT,
+  modal:null,pickerSearch:'',
+};
+
+function set(patch){Object.assign(S,patch);render();}
+
+function seedDefaultItem(tipo){
+  if(S.items.length>0) return;
+  if(tipo==='anticipo') S.items=[{id:uid(),desc:'Anticipo sobre cotización',cantidad:1,precio:0,tag:'manual'}];
+  if(tipo==='final') S.items=[{id:uid(),desc:'Pago final / Liquidación',cantidad:1,precio:0,tag:'manual'}];
+}
+
+function syncForm(){
+  const v=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  if(S.step===0) S.folio=v('f_folio')||S.folio;
+  if(S.step===1) S.cli={nombre:v('f_nombre'),tel:v('f_tel'),dir:v('f_dir'),correo:v('f_correo')};
+  if(S.step===2){
+    S.totalCotizado=parseFloat(v('f_totalcot'))||0;
+    S.notas=v('f_notas');
+    S.items=S.items.map(it=>{
+      const d=document.querySelector(`.it-desc[data-id="${it.id}"]`);
+      const q=document.querySelector(`.it-qty[data-id="${it.id}"]`);
+      const p=document.querySelector(`.it-precio[data-id="${it.id}"]`);
+      return{...it,
+        desc:d?d.value:it.desc,
+        cantidad:q?Math.max(1,parseInt(q.value)||1):it.cantidad,
+        precio:p?parseFloat(p.value)||0:it.precio};
+    });
+  }
+}
+function goStep(n){syncForm();set({step:n});}
+
+function totalItems(){return S.items.reduce((a,x)=>a+(x.precio||0)*(x.cantidad||1),0);}
+
+// ═══════════ SVG LOGO ═══════════
+function logo(h){h=h||44;return `<svg height="${h}" viewBox="0 0 220 78" xmlns="http://www.w3.org/2000/svg" style="display:block"><text x="2" y="18" font-family="Georgia,serif" font-size="14" fill="${N}" letter-spacing="2.5">Climas</text><line x1="54" y1="13" x2="218" y2="13" stroke="${G}" stroke-width="2.5"/><text x="2" y="56" font-family="'Arial Black','Arial Bold',Arial,sans-serif" font-size="40" font-weight="900" fill="${G}">In</text><text x="46" y="56" font-family="'Arial Black','Arial Bold',Arial,sans-serif" font-size="40" font-weight="900" fill="${N}">verter</text><text x="68" y="74" font-family="Georgia,serif" font-size="15" fill="${N}" letter-spacing="2">Monterrey</text></svg>`;}
+
+function secT(t){return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><div style="width:3px;min-width:3px;height:16px;background:${G};border-radius:2px"></div><span style="font-size:12px;font-weight:700;color:${N};text-transform:uppercase;letter-spacing:.7px">${t}</span></div>`;}
+
+function stepper(){
+  return `<div class="stepper no-print" style="display:flex;align-items:flex-start;justify-content:center;padding:12px 6px 8px;background:#fff;border-bottom:1px solid #e8eaf0;overflow-x:auto">${STEPS.map((l,i)=>`<div style="display:flex;align-items:center"><div style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:60px"><div style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;background:${S.step>i?G:S.step===i?N:'#ddd'};color:${S.step>i||S.step===i?'#fff':'#999'}">${S.step>i?'✓':i+1}</div><span style="font-size:9px;color:${S.step===i?N:S.step>i?G:'#bbb'};font-weight:${S.step===i?700:400};text-align:center;line-height:1.2">${l}</span></div>${i<STEPS.length-1?`<div style="width:16px;height:2px;margin:0 1px;margin-bottom:14px;background:${S.step>i?G:'#e0e0e0'}"></div>`:''}</div>`).join('')}</div>`;
+}
+
+// ─── STEP 0 ──────────────────────────────────────────────
+function s0(){
+  return `
+  ${secT('Tipo de documento')}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">${TIPOS_DOC.map(t=>`<div class="tipo-btn" data-id="${t.id}" style="border:2px solid ${S.tipo===t.id?G:'#e0e0e0'};border-radius:10px;padding:11px 13px;cursor:pointer;background:${S.tipo===t.id?L:'#fff'}"><div style="font-weight:800;font-size:13px;color:${N}">${t.l}</div><div style="font-size:11px;color:#888;margin-top:2px">${t.d}</div>${S.tipo===t.id?`<div style="font-size:11px;color:${G};font-weight:700;margin-top:5px">✓ Seleccionado</div>`:''}</div>`).join('')}</div>
+
+  ${secT('Quién entrega / cobra')}
+  <div style="display:flex;gap:8px;margin-bottom:18px">${Object.entries(QUOTERS).map(([k,q])=>`<div class="quoter-btn" data-q="${k}" style="flex:1;border:2px solid ${S.quoter===k?G:'#e0e0e0'};border-radius:9px;padding:10px 12px;cursor:pointer;background:${S.quoter===k?L:'#fff'}"><div style="font-weight:700;font-size:13px;color:${N}">${q.nombre}</div><div style="font-size:11px;color:#666;margin-top:2px">${q.tel}</div>${S.quoter===k?`<div style="font-size:11px;color:${G};font-weight:600;margin-top:4px">✓ Activo</div>`:''}</div>`).join('')}</div>
+
+  ${secT('Folio')}
+  <div style="display:flex;gap:10px;align-items:center">
+    <input id="f_folio" type="text" value="${esc(S.folio)}" style="max-width:200px">
+    <span style="font-size:12px;color:#888">Editable</span>
+  </div>`;
+}
+
+// ─── STEP 1 ──────────────────────────────────────────────
+function s1(){
+  return `${secT('Datos del cliente')}
+  <div style="display:flex;flex-wrap:wrap;gap:10px">
+    <div style="flex:1 1 100%;display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Nombre completo *</label><input id="f_nombre" type="text" value="${esc(S.cli.nombre)}" placeholder="Lic. Juan García Pérez"></div>
+    <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Teléfono / WhatsApp</label><input id="f_tel" type="text" value="${esc(S.cli.tel)}" placeholder="81 XXXX XXXX"></div>
+    <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Correo</label><input id="f_correo" type="text" value="${esc(S.cli.correo)}" placeholder="correo@ejemplo.com"></div>
+    <div style="flex:1 1 100%;display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Dirección / Proyecto</label><input id="f_dir" type="text" value="${esc(S.cli.dir)}" placeholder="Calle, número, colonia / referencia"></div>
+  </div>`;
+}
+
+// ─── STEP 2 — CONCEPTOS ──────────────────────────────────
+function itemRow(it){
+  const isManual=it.tag==='manual';
+  return `<div class="item-row">
+    <div style="flex:1;min-width:140px">
+      ${isManual
+        ?`<input class="it-desc" data-id="${it.id}" type="text" value="${esc(it.desc)}" placeholder="Descripción del concepto">`
+        :`<div style="font-size:12px;font-weight:700;color:${N}">${esc(it.desc)}</div><div style="font-size:11px;color:#555">${esc(it.specs||'')}</div>`}
+    </div>
+    <div style="display:flex;align-items:center;gap:5px"><label style="font-size:11px;color:#666">Cant.</label><input type="number" min="1" max="99" value="${it.cantidad}" class="it-qty" data-id="${it.id}" style="width:50px;padding:4px 6px;font-size:12px;text-align:center"></div>
+    <div style="display:flex;align-items:center;gap:5px"><label style="font-size:11px;color:#666">$</label><input type="number" min="0" value="${it.precio}" class="it-precio" data-id="${it.id}" style="width:100px;padding:4px 6px;font-size:12px;text-align:right"></div>
+    <button class="rm-item" data-id="${it.id}" style="background:none;border:none;color:#c00;font-size:17px;cursor:pointer">✕</button>
+  </div>`;
+}
+
+function s2(){
+  const showCategoria=S.tipo==='entrega'||S.tipo==='completo';
+  const saldo=S.totalCotizado>0?S.totalCotizado-totalItems():null;
+  return `
+  ${showCategoria?`
+  ${secT('Categoría')}
+  <div class="toggle-pill" style="margin-bottom:14px">${CATEGORIAS.map(c=>`<button class="tpill cat-btn ${S.categoria===c.id?'on':''}" data-c="${c.id}">${c.l}</button>`).join('')}</div>
+  `:''}
+
+  ${secT('Conceptos')}
+  <div style="margin-bottom:10px">${S.items.map(itemRow).join('')||'<div style="font-size:12px;color:#999;padding:10px;text-align:center">Sin conceptos agregados</div>'}</div>
+  <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap">
+    ${showCategoria&&S.categoria==='equipos'?`<button id="add-equipo" class="btn-ghost" style="flex:1;min-width:160px">+ Agregar equipo del catálogo</button>`:''}
+    <button id="add-manual" class="btn-ghost" style="flex:1;min-width:160px">+ Agregar renglón</button>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:9px;padding:12px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:${N};margin-bottom:8px"><span>Subtotal</span><span>${fmt(totalItems())}</span></div>
+    <label style="font-size:11px;color:#666;font-weight:500">Total cotizado previamente (opcional, para calcular saldo)</label>
+    <input id="f_totalcot" type="number" min="0" value="${S.totalCotizado||''}" placeholder="0">
+    ${saldo!==null?`<div style="margin-top:8px;font-size:13px;font-weight:700;color:${saldo>0?'#c00':G}">Saldo pendiente: ${fmt(saldo)}</div>`:''}
+  </div>
+
+  ${secT('Forma de pago')}
+  <div class="toggle-pill" style="margin-bottom:18px">${PAGOS.map(p=>`<button class="tpill pago-btn ${S.formaPago===p.id?'on':''}" data-p="${p.id}">${p.l}</button>`).join('')}</div>
+
+  ${secT('Notas')}
+  <textarea id="f_notas" rows="2" placeholder="Notas adicionales, garantía, condiciones...">${esc(S.notas)}</textarea>`;
+}
+
+// ─── STEP 3 — FIRMA ──────────────────────────────────────
+function s3(){
+  return `${secT('Firma de conformidad')}
+  <div class="sig-wrap">
+    <div style="font-size:12px;font-weight:700;color:${N};margin-bottom:6px">Firma del cliente *</div>
+    <canvas id="sig-cliente" class="sig-canvas"></canvas>
+    <button id="clear-cliente" class="btn-ghost" style="margin-top:8px;font-size:12px">Limpiar firma</button>
+  </div>
+  <div class="sig-wrap">
+    <div style="font-size:12px;font-weight:700;color:${N};margin-bottom:6px">Firma de quien entrega / cobra (${esc(QUOTERS[S.quoter].nombre)})</div>
+    <canvas id="sig-entrega" class="sig-canvas"></canvas>
+    <button id="clear-entrega" class="btn-ghost" style="margin-top:8px;font-size:12px">Limpiar firma</button>
+  </div>
+  <div style="font-size:12px;color:#666;background:#fff;padding:8px 12px;border-radius:7px;border:1px solid #e0e0e0">Dibuja con el dedo (celular) o el mouse. La firma queda incrustada en el PDF final.</div>`;
+}
+
+// ─── STEP 4 — VISTA PREVIA ───────────────────────────────
+function docLabel(){return TIPOS_DOC.find(t=>t.id===S.tipo)?.l||'Nota';}
+
+function s4(){
+  const q=QUOTERS[S.quoter];
+  const saldo=S.totalCotizado>0?S.totalCotizado-totalItems():null;
+  return `
+  <div id="print-area" style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:22px;margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid ${G};padding-bottom:14px;margin-bottom:16px">
+      ${logo(48)}
+      <div style="text-align:right">
+        <div style="font-size:16px;font-weight:800;color:${N}">${docLabel().toUpperCase()}</div>
+        <div style="font-size:12px;color:#666">Folio: <strong>${esc(S.folio)}</strong></div>
+        <div style="font-size:12px;color:#666">Fecha: ${today}</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:20px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:4px">Cliente</div>
+        <div style="font-size:13px;font-weight:700;color:${N}">${esc(S.cli.nombre)||'—'}</div>
+        ${S.cli.tel?`<div style="font-size:12px;color:#555">${esc(S.cli.tel)}</div>`:''}
+        ${S.cli.correo?`<div style="font-size:12px;color:#555">${esc(S.cli.correo)}</div>`:''}
+        ${S.cli.dir?`<div style="font-size:12px;color:#555">${esc(S.cli.dir)}</div>`:''}
+      </div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:4px">Entrega / Cobra</div>
+        <div style="font-size:13px;font-weight:700;color:${N}">${esc(q.nombre)}</div>
+        <div style="font-size:12px;color:#555">${esc(q.tel)}</div>
+      </div>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px">
+      <thead><tr style="background:${N};color:#fff"><th style="padding:6px 8px;text-align:left">Concepto</th><th style="padding:6px 8px;text-align:center">Cant.</th><th style="padding:6px 8px;text-align:right">Precio unit.</th><th style="padding:6px 8px;text-align:right">Importe</th></tr></thead>
+      <tbody>${S.items.map((it,i)=>`<tr style="background:${i%2?'#f9f9f9':'#fff'};border-bottom:1px solid #f0f0f0">
+        <td style="padding:6px 8px">${esc(it.desc)}${it.specs?`<br><span style="font-size:10px;color:#888">${esc(it.specs)}</span>`:''}</td>
+        <td style="padding:6px 8px;text-align:center">${it.cantidad}</td>
+        <td style="padding:6px 8px;text-align:right">${fmt(it.precio)}</td>
+        <td style="padding:6px 8px;text-align:right;font-weight:700">${fmt(it.precio*it.cantidad)}</td>
+      </tr>`).join('')||'<tr><td colspan="4" style="padding:10px;text-align:center;color:#999">Sin conceptos</td></tr>'}</tbody>
+    </table>
+
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <div style="min-width:220px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>Subtotal</span><strong>${fmt(totalItems())}</strong></div>
+        ${saldo!==null?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:#666"><span>Total cotizado</span><span>${fmt(S.totalCotizado)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-top:2px solid ${N};margin-top:4px;color:${saldo>0?'#c00':G};font-weight:800"><span>Saldo pendiente</span><span>${fmt(saldo)}</span></div>`:''}
+        <div style="font-size:11px;color:#888;margin-top:6px">Forma de pago: ${PAGOS.find(p=>p.id===S.formaPago)?.l.replace(/^\S+\s/,'')||''}</div>
+      </div>
+    </div>
+
+    ${S.notas?`<div style="font-size:12px;color:#555;background:#f9f9f9;padding:8px 12px;border-radius:6px;margin-bottom:16px"><strong>Notas:</strong> ${esc(S.notas)}</div>`:''}
+
+    <div style="display:flex;gap:20px;margin-top:24px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px;text-align:center">
+        ${S.firmaCliente?`<img src="${S.firmaCliente}" style="height:70px;object-fit:contain">`:'<div style="height:70px"></div>'}
+        <div style="border-top:1.5px solid #333;padding-top:4px;font-size:11px;color:#555">Firma del cliente<br>${esc(S.cli.nombre)}</div>
+      </div>
+      <div style="flex:1;min-width:200px;text-align:center">
+        ${S.firmaEntrega?`<img src="${S.firmaEntrega}" style="height:70px;object-fit:contain">`:'<div style="height:70px"></div>'}
+        <div style="border-top:1.5px solid #333;padding-top:4px;font-size:11px;color:#555">Firma de quien entrega<br>${esc(q.nombre)}</div>
+      </div>
+    </div>
+
+    <div style="text-align:center;font-size:10px;color:#aaa;margin-top:20px;border-top:1px solid #eee;padding-top:8px">Climas Inverter Monterrey · Autorizado Carrier · ${esc(q.tel)}</div>
+  </div>
+
+  <div class="no-print" style="display:flex;flex-direction:column;gap:8px">
+    <button id="btn-pdf-share" class="btn-n" style="width:100%;font-size:14px">📤 Generar PDF y Compartir</button>
+    <button id="btn-pdf-download" class="btn-ghost" style="width:100%;font-size:13px">⬇️ Descargar PDF</button>
+    <button onclick="window.print()" class="btn-ghost" style="width:100%;font-size:13px">🖨️ Imprimir</button>
+  </div>`;
+}
+
+// ═══════════ BUILD HTML ═══════════
+function pickerModal(){
+  if(S.modal!=='picker') return '';
+  const brands=[...new Set(S.catalog.map(x=>x.m))];
+  return `<div class="modal-bg"><div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="font-size:15px;font-weight:700;color:${N}">Seleccionar equipo</h3>
+      <button id="close-modal" style="background:none;border:none;font-size:22px;cursor:pointer;color:#666">✕</button>
+    </div>
+    <input id="picker-search" type="text" placeholder="Buscar por marca, tonelaje, voltaje..." style="margin-bottom:10px">
+    <div id="picker-list" style="max-height:60vh;overflow-y:auto;border:1px solid #e0e0e0;border-radius:8px">
+      ${brands.map(m=>{
+        const items=S.catalog.filter(x=>x.m===m);
+        return `<div class="brand-group" data-brand="${m.toLowerCase()}">
+          <div style="background:#f5f7fa;padding:6px 10px;font-size:10px;font-weight:700;color:#888;text-transform:uppercase;border-bottom:1px solid #e0e0e0">${m}</div>
+          ${items.map(x=>{
+            const p=x.pL;
+            return `<div class="catalog-item" data-id="${x.id}" data-brand="${x.m.toLowerCase()}">
+              <div style="flex:1">
+                <span style="font-weight:600;color:${N}">${x.t}T · ${x.v} · ${x.sf==='FC'?'Frío-Calor':'Solo Frío'}</span>
+                <span style="color:#888;font-size:11px;margin-left:6px">${x.mod}</span>
+                <div style="margin-top:2px"><span class="seer-badge">${x.seer} SEER</span> ${x.wifi?'<span class="wifi-badge">WiFi</span>':''}</div>
+              </div>
+              <div style="font-weight:700;color:${G};min-width:68px;text-align:right">${fmt(p)}</div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }).join('')}
+    </div>
+  </div></div>`;
+}
+
+function render(){
+  const steps_fn=[s0,s1,s2,s3,s4];
+  const content=steps_fn[S.step]();
+  document.getElementById('app').innerHTML=`
+  <div style="max-width:720px;margin:0 auto;background:#f4f6f9;min-height:100vh;padding-bottom:80px">
+    <div style="background:${N};padding:11px 14px;display:flex;align-items:center;justify-content:space-between" class="no-print">
+      <div style="display:flex;align-items:center;gap:10px">
+        ${logo(44)}
+        <div style="border-left:1px solid rgba(255,255,255,.2);padding-left:10px">
+          <div style="color:#fff;font-weight:700;font-size:13px">Nota de Compra / Recibo</div>
+          <div style="color:${G};font-size:10px">Climas Inverter Monterrey · Autorizado Carrier</div>
+        </div>
+      </div>
+      <div style="text-align:right"><div style="color:${G};font-size:9px;font-weight:600">FOLIO</div><div style="color:#fff;font-size:12px;font-weight:700">${esc(S.folio)}</div></div>
+    </div>
+    ${stepper()}
+    <div style="padding:14px 14px 0">${content}</div>
+    <div class="no-print" style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e0e0e0;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;z-index:100;max-width:720px;margin:0 auto">
+      <button id="btn-prev" ${S.step===0?'disabled':''} class="btn-ghost" style="color:${S.step===0?'#ccc':N};border-color:${S.step===0?'#eee':'#ccc'}">← Anterior</button>
+      <span style="font-size:11px;color:#999">${S.step+1} / ${STEPS.length}</span>
+      ${S.step<STEPS.length-1?`<button id="btn-next" class="btn-g">Siguiente →</button>`:`<span></span>`}
+    </div>
+  </div>
+  ${pickerModal()}`;
+  attachEvents();
+  if(S.step===3) setTimeout(initSignaturePads,50);
+}
+
+// ═══════════ SIGNATURE PADS ═══════════
+function setupCanvas(canvas, existingDataUrl, onSave){
+  if(!canvas) return;
+  const ratio=window.devicePixelRatio||1;
+  const rect=canvas.getBoundingClientRect();
+  canvas.width=rect.width*ratio;canvas.height=rect.height*ratio;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(ratio,ratio);
+  ctx.strokeStyle=N;ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';
+  if(existingDataUrl){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,rect.width,rect.height);img.src=existingDataUrl;}
+  let drawing=false,lastX=0,lastY=0;
+  const pos=e=>{const r=canvas.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];};
+  canvas.addEventListener('pointerdown',e=>{drawing=true;[lastX,lastY]=pos(e);canvas.setPointerCapture(e.pointerId);});
+  canvas.addEventListener('pointermove',e=>{if(!drawing)return;const[x,y]=pos(e);ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(x,y);ctx.stroke();[lastX,lastY]=[x,y];});
+  const end=()=>{if(!drawing)return;drawing=false;onSave(canvas.toDataURL('image/png'));};
+  canvas.addEventListener('pointerup',end);
+  canvas.addEventListener('pointerleave',end);
+}
+function initSignaturePads(){
+  setupCanvas(document.getElementById('sig-cliente'),S.firmaCliente,url=>{S.firmaCliente=url;});
+  setupCanvas(document.getElementById('sig-entrega'),S.firmaEntrega,url=>{S.firmaEntrega=url;});
+}
+
+// ═══════════ PDF GENERATION ═══════════
+async function makePdfBlob(){
+  const el=document.getElementById('print-area');
+  const opt={margin:10,filename:S.folio+'.pdf',image:{type:'jpeg',quality:0.95},html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
+  return await html2pdf().set(opt).from(el).outputPdf('blob');
+}
+async function sharePdf(){
+  try{
+    if(typeof html2pdf==='undefined'){alert('No se pudo cargar el generador de PDF (revisa tu conexión a internet). Usa el botón de Imprimir como alternativa.');return;}
+    const blob=await makePdfBlob();
+    const file=new File([blob],S.folio+'.pdf',{type:'application/pdf'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:S.folio,text:'Nota de compra - Climas Inverter Monterrey'});
+    } else {
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download=S.folio+'.pdf';a.click();
+      alert('Tu navegador no soporta compartir directo. El PDF se descargó — adjúntalo manualmente en WhatsApp o correo.');
+    }
+  }catch(e){alert('Error generando PDF: '+e.message+'\\n\\nUsa el botón de Imprimir como alternativa.');}
+}
+async function downloadPdf(){
+  try{
+    if(typeof html2pdf==='undefined'){alert('No se pudo cargar el generador de PDF. Usa Imprimir.');return;}
+    const el=document.getElementById('print-area');
+    const opt={margin:10,filename:S.folio+'.pdf',image:{type:'jpeg',quality:0.95},html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
+    await html2pdf().set(opt).from(el).save();
+  }catch(e){alert('Error generando PDF: '+e.message);}
+}
+
+// ═══════════ EVENTS ═══════════
+function attachEvents(){
+  const q=s=>document.querySelector(s);
+  const qa=s=>document.querySelectorAll(s);
+
+  q('#btn-prev')?.addEventListener('click',()=>goStep(Math.max(0,S.step-1)));
+  q('#btn-next')?.addEventListener('click',()=>{
+    syncForm();
+    if(S.step===1&&!S.cli.nombre.trim()){alert('Por favor ingresa el nombre del cliente.');return;}
+    if(S.step===3&&!S.firmaCliente){if(!confirm('No hay firma del cliente. ¿Continuar sin firma?'))return;}
+    goStep(Math.min(STEPS.length-1,S.step+1));
+  });
+
+  qa('.tipo-btn').forEach(b=>b.addEventListener('click',()=>{
+    syncForm();
+    const nt=b.dataset.id;
+    seedDefaultItem(nt);
+    set({tipo:nt});
+  }));
+  qa('.quoter-btn').forEach(b=>b.addEventListener('click',()=>{syncForm();set({quoter:b.dataset.q});}));
+  qa('.cat-btn').forEach(b=>b.addEventListener('click',()=>{syncForm();set({categoria:b.dataset.c});}));
+  qa('.pago-btn').forEach(b=>b.addEventListener('click',()=>{syncForm();set({formaPago:b.dataset.p});}));
+
+  qa('.rm-item').forEach(b=>b.addEventListener('click',()=>{syncForm();set({items:S.items.filter(x=>x.id!==b.dataset.id)});}));
+
+  q('#add-manual')?.addEventListener('click',()=>{
+    syncForm();
+    set({items:[...S.items,{id:uid(),desc:'',cantidad:1,precio:0,tag:'manual'}]});
+  });
+  q('#add-equipo')?.addEventListener('click',()=>{syncForm();set({modal:'picker'});});
+  q('#close-modal')?.addEventListener('click',()=>set({modal:null}));
+
+  const pickerSearch=q('#picker-search');
+  if(pickerSearch){
+    pickerSearch.addEventListener('input',e=>{
+      const v=e.target.value.toLowerCase();
+      qa('#picker-list .catalog-item').forEach(row=>{
+        const t=(row.dataset.brand||'')+' '+(row.textContent||'').toLowerCase();
+        row.style.display=t.includes(v)?'':'none';
+      });
+      qa('#picker-list .brand-group').forEach(grp=>{
+        const visible=[...grp.querySelectorAll('.catalog-item')].some(r=>r.style.display!=='none');
+        grp.style.display=visible?'':'none';
+      });
+    });
+    setTimeout(()=>pickerSearch.focus(),50);
+  }
+
+  qa('.catalog-item').forEach(item=>item.addEventListener('click',()=>{
+    const eq=S.catalog.find(x=>x.id===item.dataset.id);
+    if(!eq)return;
+    const specs=`${eq.t}T · ${eq.v} · ${eq.sf==='FC'?'Frío-Calor':'Solo Frío'} · ${eq.mod} · ${eq.seer} SEER`;
+    set({items:[...S.items,{id:uid(),desc:eq.m,specs,cantidad:1,precio:eq.pL,tag:'equipo'}],modal:null});
+  }));
+
+  q('#clear-cliente')?.addEventListener('click',()=>{
+    const c=document.getElementById('sig-cliente');const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);S.firmaCliente=null;
+  });
+  q('#clear-entrega')?.addEventListener('click',()=>{
+    const c=document.getElementById('sig-entrega');const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);S.firmaEntrega=null;
+  });
+
+  q('#btn-pdf-share')?.addEventListener('click',sharePdf);
+  q('#btn-pdf-download')?.addEventListener('click',downloadPdf);
+}
+
+seedDefaultItem(S.tipo);
+render();
+</script>
+</body>
+</html>
