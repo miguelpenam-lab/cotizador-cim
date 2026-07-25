@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Cotizador CIM v6.3</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f6f9;color:#1a1a1a;font-size:14px}
+input,select,textarea{font-family:inherit;border:1px solid #d0d5dd;border-radius:6px;padding:7px 10px;font-size:13px;color:#1a1a1a;outline:none;background:#fff;width:100%;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:#6ec25b;box-shadow:0 0 0 2px #6ec25b22}
+button{font-family:inherit;cursor:pointer;border:none;transition:all .15s}
+.btn-g{background:#6ec25b;color:#fff;border-radius:8px;padding:8px 18px;font-weight:700;font-size:13px}
+.btn-n{background:#071740;color:#fff;border-radius:8px;padding:8px 18px;font-weight:700;font-size:13px}
+.btn-ghost{background:#fff;color:#071740;border:1.5px solid #ccc;border-radius:8px;padding:8px 16px;font-weight:600;font-size:13px}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:flex;align-items:flex-end;justify-content:center}
+.modal-box{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;padding:18px}
+.zone-card{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:10px}
+.opt-slot{border:1.5px dashed #ccc;border-radius:7px;padding:8px;cursor:pointer;font-size:11px;color:#aaa;text-align:center;min-height:52px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;transition:all .15s}
+.opt-slot:hover{border-color:#6ec25b;color:#6ec25b}
+.opt-filled{border:1.5px solid #6ec25b;background:#f0f7ee;border-radius:7px;padding:7px 8px;font-size:11px;cursor:pointer;line-height:1.4}
+.catalog-item{padding:8px 10px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px;transition:background .1s;gap:8px}
+.catalog-item:hover{background:#f0f7ee}
+.catalog-item.hidden{display:none}
+.chk-row{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;padding:5px 0}
+.chk-row input[type=checkbox]{accent-color:#6ec25b;width:16px;height:16px;cursor:pointer;margin-top:1px;flex-shrink:0}
+.toggle-pill{display:flex;gap:6px;flex-wrap:wrap}
+.tpill{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid #ccc;background:#fff;color:#888}
+.tpill.on{background:#071740;color:#fff;border-color:#071740}
+.fav-btn{background:none;border:none;font-size:14px;padding:0 4px;cursor:pointer;opacity:.5;flex-shrink:0}
+.fav-btn.active{opacity:1}
+.seer-badge{background:#e8f0fe;color:#1a56b0;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600}
+.wifi-badge{background:#e8f5e9;color:#2e7d32;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600}
+.rec-badge{background:#071740;color:#6ec25b;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.3px}
+@media print{
+  .no-print{display:none!important}
+  body{background:#fff}
+  #print-area{padding:0!important;border:none!important;border-radius:0!important}
+  @page{margin:1.5cm;size:A4}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ═══════════ CONSTANTS ═══════════
+const N='#071740',G='#6ec25b',L='#f0f7ee';
+const STEPS=['Config','Cliente','Equipos','Servicios','Condiciones','Entrega','Vista Previa'];
+const TIPOS=[
+  {id:'T1',l:'Residencial / Departamento',d:'Casa, depto, instalación o reemplazo'},
+  {id:'T2',l:'Solo Equipos',d:'El cliente pide precio de equipo'},
+  {id:'T3',l:'Servicio / Mantenimiento',d:'Diagnóstico, reparación, mantenimiento'},
+  {id:'T4',l:'Corporativo / VRF / Proyecto',d:'Empresa, edificio, multi-equipo'},
+];
+const QUOTERS={
+  miguel:{nombre:'Miguel Ángel Peña Moreno',tel:'811 066 3003',email:'proyectos@climasinvertermonterrey.com'},
+  beatriz:{nombre:'Lic. Beatriz Moreno',tel:'811 079 8926',email:'ventas@climasinvertermonterrey.com'},
+};
+const ZONAS_LIST=['Sala-comedor','Cocina','Estancia','Recámara principal','Recámara secundaria','Recámara 1','Recámara 2','Recámara 3','Site / Cuarto de servidores','Terraza','Oficina','Sala de juntas','Cubículo','Bodega','Otro (especificar)'];
+const INST_OPTS=[
+  {id:'i1',l:'Instalación básica mini split 1–2 ton',p:1500},
+  {id:'i2',l:'Instalación básica mini split 3 ton',p:2800},
+  {id:'i3',l:'Instalación departamento estándar',p:3000},
+  {id:'i4',l:'Instalación departamento 3 ton',p:4500},
+  {id:'i5',l:'Material adicional para instalación',p:500},
+  {id:'i6',l:'Material eléctrico adicional',p:500},
+  {id:'i7',l:'Retiro de unidad instalada',p:700},
+  {id:'i8',l:'Mano de obra eléctrica adicional',p:600},
+  {id:'i9',l:'Instalación comercial / industrial (por proyecto)',p:0},
+];
+const SVC_OPTS=[
+  {id:'s1',l:'Mantenimiento 1 ton',p:700},
+  {id:'s2',l:'Mantenimiento 1.5 ton',p:750},
+  {id:'s3',l:'Mantenimiento 2 ton',p:800},
+  {id:'s4',l:'Mantenimiento 3 ton',p:1200},
+  {id:'s5',l:'Diagnóstico residencial',p:800},
+  {id:'s6',l:'Diagnóstico comercial',p:1500},
+  {id:'s7',l:'Recarga de gas 2 ton',p:1000},
+  {id:'s8',l:'Mano de obra adicional',p:700},
+];
+const PREM_BRANDS=['Carrier','Trane','York','CIAC'];
+const GAR_PREM='5 años compresor · 1 año partes, control y tarjetas';
+const GAR_STD='5 años compresor · 1 año partes · 3 meses control y tarjetas';
+const OPT_NAMES=['Confiable','Recomendada','Elite'];
+
+// ═══════════ CATALOG ═══════════
+// Each entry: id, m(arca), mod(elo), sf(solo frio/frio-calor), v(oltaje), t(oneladas), seer, wifi, pL(ocal), pE(nviado), tipo(inverter/conv)
+const BASE_CAT=[
+// ── CARRIER ──────────────────────────────────────────────
+{id:'cu110_1',m:'Carrier ULTRA 32',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:21,wifi:true,pL:10200,pE:null,tipo:'inv'},
+{id:'cu220_1',m:'Carrier ULTRA 32',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:21,wifi:true,pL:10200,pE:null,tipo:'inv'},
+{id:'cu220_15',m:'Carrier ULTRA 32',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:21,wifi:true,pL:13000,pE:null,tipo:'inv'},
+{id:'cu220_2',m:'Carrier ULTRA 32',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:21,wifi:true,pL:16500,pE:null,tipo:'inv'},
+{id:'cx110_1',m:'Carrier PURON X',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:19,wifi:true,pL:7350,pE:7950,tipo:'inv'},
+{id:'cx220_1',m:'Carrier PURON X',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:19,wifi:true,pL:7200,pE:7800,tipo:'inv'},
+{id:'cx220_15',m:'Carrier PURON X',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:19,wifi:true,pL:10150,pE:10850,tipo:'inv'},
+{id:'cx220_2',m:'Carrier PURON X',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:19,wifi:true,pL:13700,pE:14500,tipo:'inv'},
+{id:'ce_15',m:'Carrier ELITE',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:19,wifi:false,pL:13900,pE:14600,tipo:'inv'},
+{id:'cc_1',m:'Carrier Cool Easy',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:18,wifi:false,pL:13789,pE:14389,tipo:'inv'},
+{id:'cc_15',m:'Carrier Cool Easy',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:18,wifi:false,pL:20469,pE:21169,tipo:'inv'},
+{id:'cc_3',m:'Carrier Cool Easy',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:18,wifi:false,pL:27850,pE:29350,tipo:'inv'},
+{id:'cp110_1',m:'Carrier Puron R-410',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:8298,pE:8898,tipo:'conv'},
+{id:'cp220_1',m:'Carrier Puron R-410',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:8298,pE:8898,tipo:'conv'},
+{id:'cp220_15',m:'Carrier Puron R-410',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:8060,pE:8760,tipo:'conv'},
+{id:'cp220_2',m:'Carrier Puron R-410',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:15665,pE:16465,tipo:'conv'},
+// ── CIAC ──────────────────────────────────────────────────
+{id:'ci19_110',m:'CIAC 19 SEERS WiFi',mod:'Inverter R32',sf:'FC',v:'110V',t:1,seer:19,wifi:true,pL:7246,pE:7846,tipo:'inv'},
+{id:'ci19_1',m:'CIAC 19 SEERS WiFi',mod:'Inverter R32',sf:'FC',v:'220V',t:1,seer:19,wifi:true,pL:7554,pE:8154,tipo:'inv'},
+{id:'ci19_15',m:'CIAC 19 SEERS WiFi',mod:'Inverter R32',sf:'FC',v:'220V',t:1.5,seer:19,wifi:true,pL:8870,pE:9570,tipo:'inv'},
+{id:'ci19_2',m:'CIAC 19 SEERS WiFi',mod:'Inverter R32',sf:'FC',v:'220V',t:2,seer:19,wifi:true,pL:14146,pE:14946,tipo:'inv'},
+{id:'ci17_15',m:'CIAC 17 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:17,wifi:false,pL:8570,pE:9270,tipo:'inv'},
+{id:'ci20_15',m:'CIAC 20 SEERS WiFi',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:20,wifi:true,pL:9070,pE:9770,tipo:'inv'},
+{id:'cfix110_1',m:'CIAC FIX R-410',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:5538,pE:6138,tipo:'conv'},
+{id:'cfix220_1',m:'CIAC FIX R-410',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:4700,pE:5300,tipo:'conv'},
+{id:'cfix220_15',m:'CIAC FIX R-410',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:7450,pE:8150,tipo:'conv'},
+{id:'cfix220_2',m:'CIAC FIX R-410',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:11771,pE:12571,tipo:'conv'},
+// ── HISENSE ───────────────────────────────────────────────
+{id:'hi110_1',m:'Hisense',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:17,wifi:true,pL:5300,pE:5900,tipo:'inv'},
+{id:'hi220_1',m:'Hisense',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:17,wifi:true,pL:5300,pE:null,tipo:'inv'},
+{id:'hi220_15',m:'Hisense',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:17,wifi:true,pL:8500,pE:9200,tipo:'inv'},
+{id:'hi220_2',m:'Hisense',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:17,wifi:true,pL:11010,pE:11810,tipo:'inv'},
+{id:'hi220_3',m:'Hisense',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:17,wifi:true,pL:22290,pE:23790,tipo:'inv'},
+{id:'hic110_1',m:'Hisense',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:5120,pE:5720,tipo:'conv'},
+{id:'hic220_1',m:'Hisense',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:4730,pE:5330,tipo:'conv'},
+{id:'hic220_15',m:'Hisense',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:7565,pE:8265,tipo:'conv'},
+{id:'hic220_2',m:'Hisense',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:10120,pE:10920,tipo:'conv'},
+// ── MIRAGE ────────────────────────────────────────────────
+{id:'mv32_110_1',m:'Mirage V32',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:17,wifi:false,pL:6290,pE:null,tipo:'inv'},
+{id:'mv32_220_1',m:'Mirage V32',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:17,wifi:false,pL:6240,pE:null,tipo:'inv'},
+{id:'mv32_220_15',m:'Mirage V32',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:17,wifi:false,pL:8990,pE:null,tipo:'inv'},
+{id:'mv32_220_2',m:'Mirage V32',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:17,wifi:false,pL:11650,pE:null,tipo:'inv'},
+{id:'mx32_110_1',m:'Mirage Inverter X32',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:18,wifi:false,pL:6600,pE:7200,tipo:'inv'},
+{id:'mx32_220_1',m:'Mirage Inverter X32',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:18,wifi:false,pL:6350,pE:6950,tipo:'inv'},
+{id:'mx32_220_15',m:'Mirage Inverter X32',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:18,wifi:false,pL:9220,pE:9920,tipo:'inv'},
+{id:'mx32_220_2',m:'Mirage Inverter X32',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:18,wifi:false,pL:11950,pE:12750,tipo:'inv'},
+{id:'mn_110_1',m:'Mirage NEO Gris',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:19,wifi:false,pL:7900,pE:null,tipo:'inv'},
+{id:'mn_220_1',m:'Mirage NEO Gris',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:19,wifi:false,pL:8190,pE:null,tipo:'inv'},
+{id:'mn_220_15',m:'Mirage NEO Gris',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:19,wifi:false,pL:10630,pE:null,tipo:'inv'},
+{id:'mn_220_2',m:'Mirage NEO Gris',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:19,wifi:false,pL:14490,pE:null,tipo:'inv'},
+{id:'mm22_110_1',m:'Mirage Magnum 22',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:22,wifi:false,pL:8990,pE:9590,tipo:'inv'},
+{id:'mm22_220_1',m:'Mirage Magnum 22',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:22,wifi:false,pL:8780,pE:9380,tipo:'inv'},
+{id:'mm22_220_15',m:'Mirage Magnum 22',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:22,wifi:false,pL:11840,pE:12540,tipo:'inv'},
+{id:'mm22_220_2',m:'Mirage Magnum 22',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:22,wifi:false,pL:15670,pE:16470,tipo:'inv'},
+{id:'mm18_3',m:'Mirage Magnum 18',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:18,wifi:false,pL:25540,pE:27040,tipo:'inv'},
+{id:'mi17_3',m:'Mirage Inverter 17',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:17,wifi:false,pL:21050,pE:22550,tipo:'inv'},
+{id:'ml_110_1',m:'Mirage Life 12+',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:5810,pE:6410,tipo:'conv'},
+{id:'ml_220_1',m:'Mirage Life 12+',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:5400,pE:6000,tipo:'conv'},
+{id:'ml_220_15',m:'Mirage Life 12+',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:8790,pE:9490,tipo:'conv'},
+{id:'ml_220_2',m:'Mirage Life 12+',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:11320,pE:12120,tipo:'conv'},
+{id:'mnex_110_1',m:'Mirage NEX',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:5090,pE:5690,tipo:'conv'},
+{id:'mnex_220_1',m:'Mirage NEX',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:5010,pE:5610,tipo:'conv'},
+{id:'mnex_220_15',m:'Mirage NEX',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:7810,pE:8510,tipo:'conv'},
+{id:'mnex_220_2',m:'Mirage NEX',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:10470,pE:11270,tipo:'conv'},
+// ── GREE ──────────────────────────────────────────────────
+{id:'gr110_1',m:'GREE',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:18,wifi:false,pL:8080,pE:8680,tipo:'inv'},
+{id:'gr220_1',m:'GREE',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:18,wifi:false,pL:7860,pE:8460,tipo:'inv'},
+{id:'gr220_15',m:'GREE',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:18,wifi:false,pL:10830,pE:11530,tipo:'inv'},
+{id:'gr220_2',m:'GREE',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:18,wifi:false,pL:14480,pE:15280,tipo:'inv'},
+{id:'gr220_3',m:'GREE',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:18,wifi:false,pL:24750,pE:26250,tipo:'inv'},
+{id:'grc110_1',m:'GREE R-410',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:5190,pE:5790,tipo:'conv'},
+{id:'grc220_1',m:'GREE R-410',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:4840,pE:5440,tipo:'conv'},
+{id:'grc220_15',m:'GREE R-410',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:8080,pE:8780,tipo:'conv'},
+{id:'grc220_2',m:'GREE R-410',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:10310,pE:11110,tipo:'conv'},
+{id:'grc220_3',m:'GREE R-410',mod:'Convencional',sf:'FC',v:'220V',t:3,seer:12,wifi:false,pL:23660,pE:25160,tipo:'conv'},
+// ── LG ────────────────────────────────────────────────────
+{id:'lgd_1',m:'LG Dual Inverter',mod:'WiFi',sf:'FC',v:'220V',t:1,seer:21,wifi:true,pL:9878,pE:10478,tipo:'inv'},
+{id:'lgd_15',m:'LG Dual Inverter',mod:'WiFi',sf:'FC',v:'220V',t:1.5,seer:21,wifi:true,pL:12282,pE:12982,tipo:'inv'},
+{id:'lgd_2',m:'LG Dual Inverter',mod:'WiFi',sf:'FC',v:'220V',t:2,seer:21,wifi:true,pL:14203,pE:15003,tipo:'inv'},
+{id:'lge_1',m:'LG Espejo',mod:'WiFi',sf:'FC',v:'220V',t:1,seer:21,wifi:true,pL:13850,pE:14450,tipo:'inv'},
+{id:'lge_15',m:'LG Espejo',mod:'WiFi',sf:'FC',v:'220V',t:1.5,seer:21,wifi:true,pL:17100,pE:17800,tipo:'inv'},
+{id:'lge_2',m:'LG Espejo',mod:'WiFi',sf:'FC',v:'220V',t:2,seer:21,wifi:true,pL:20300,pE:21100,tipo:'inv'},
+// ── MABE ──────────────────────────────────────────────────
+{id:'me110_1',m:'Mabe Espejo',mod:'WiFi',sf:'FC',v:'110V',t:1,seer:20,wifi:true,pL:8990,pE:9590,tipo:'inv'},
+{id:'me220_1',m:'Mabe Espejo',mod:'WiFi',sf:'FC',v:'220V',t:1,seer:20,wifi:true,pL:8190,pE:8790,tipo:'inv'},
+{id:'me220_15',m:'Mabe Espejo',mod:'WiFi',sf:'FC',v:'220V',t:1.5,seer:20,wifi:true,pL:12390,pE:13090,tipo:'inv'},
+{id:'me220_2',m:'Mabe Espejo',mod:'WiFi',sf:'FC',v:'220V',t:2,seer:20,wifi:true,pL:15715,pE:16515,tipo:'inv'},
+{id:'mb110_1',m:'Mabe Blanco',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:18,wifi:false,pL:6100,pE:6700,tipo:'inv'},
+{id:'mb220_1',m:'Mabe Blanco',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:18,wifi:false,pL:5300,pE:5900,tipo:'inv'},
+{id:'mb220_15',m:'Mabe Blanco',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:18,wifi:false,pL:8560,pE:9260,tipo:'inv'},
+{id:'mb220_2',m:'Mabe Blanco',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:18,wifi:false,pL:11350,pE:12150,tipo:'inv'},
+{id:'mb220_3',m:'Mabe Blanco',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:18,wifi:false,pL:19050,pE:20550,tipo:'inv'},
+{id:'mbc110_1',m:'Mabe Blanco',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:4680,pE:5280,tipo:'conv'},
+{id:'mbc220_1',m:'Mabe Blanco',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:4740,pE:5340,tipo:'conv'},
+{id:'mbc220_15',m:'Mabe Blanco',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:7600,pE:8300,tipo:'conv'},
+{id:'mbc220_2',m:'Mabe Blanco',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:9525,pE:10325,tipo:'conv'},
+{id:'mbc220_3',m:'Mabe Blanco',mod:'Convencional',sf:'FC',v:'220V',t:3,seer:12,wifi:false,pL:18400,pE:19900,tipo:'conv'},
+// ── PANASONIC ─────────────────────────────────────────────
+{id:'pan110_1',m:'Panasonic 19.8 SEERS',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:19.8,wifi:false,pL:7000,pE:7600,tipo:'inv'},
+{id:'pan220_1',m:'Panasonic 19.8 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:19.8,wifi:false,pL:9200,pE:9800,tipo:'inv'},
+{id:'pan220_15',m:'Panasonic 19.8 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:19.8,wifi:false,pL:12200,pE:12900,tipo:'inv'},
+{id:'pan220_2',m:'Panasonic 19.8 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:19.8,wifi:false,pL:15500,pE:16300,tipo:'inv'},
+// ── TRANE ─────────────────────────────────────────────────
+{id:'tri16_1',m:'Trane Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:16,wifi:false,pL:8626,pE:9226,tipo:'inv'},
+{id:'tri16_15',m:'Trane Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:16,wifi:false,pL:11272,pE:11972,tipo:'inv'},
+{id:'tri16_2',m:'Trane Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:16,wifi:false,pL:14261,pE:15061,tipo:'inv'},
+{id:'tri16_3',m:'Trane Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:16,wifi:false,pL:24342,pE:25842,tipo:'inv'},
+{id:'triae_1',m:'Trane Inverter Alta Ef.',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:20,wifi:false,pL:17442,pE:18042,tipo:'inv'},
+{id:'triae_15',m:'Trane Inverter Alta Ef.',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:20,wifi:false,pL:22557,pE:23257,tipo:'inv'},
+{id:'triae_2',m:'Trane Inverter Alta Ef.',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:20,wifi:false,pL:22085,pE:22885,tipo:'inv'},
+{id:'trc220_1',m:'Trane',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:6616,pE:7216,tipo:'conv'},
+{id:'trc220_15',m:'Trane',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:9241,pE:9941,tipo:'conv'},
+{id:'trc220_2',m:'Trane',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:11946,pE:12746,tipo:'conv'},
+{id:'trc220_3',m:'Trane',mod:'Convencional',sf:'FC',v:'220V',t:3,seer:12,wifi:false,pL:19848,pE:21348,tipo:'conv'},
+// ── YORK ──────────────────────────────────────────────────
+{id:'yi16_110_1',m:'York Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:16,wifi:false,pL:8229,pE:8829,tipo:'inv'},
+{id:'yi16_220_1',m:'York Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:16,wifi:false,pL:7766,pE:8366,tipo:'inv'},
+{id:'yi16_220_15',m:'York Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:16,wifi:false,pL:11052,pE:11752,tipo:'inv'},
+{id:'yi16_220_2',m:'York Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:16,wifi:false,pL:14415,pE:15215,tipo:'inv'},
+{id:'yi16_220_3',m:'York Inverter 16 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:16,wifi:false,pL:24694,pE:26194,tipo:'inv'},
+{id:'ytri_1',m:'York Triple Inverter',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:21,wifi:false,pL:15106,pE:15706,tipo:'inv'},
+{id:'ytri_15',m:'York Triple Inverter',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:21,wifi:false,pL:22248,pE:22948,tipo:'inv'},
+{id:'ytri_2',m:'York Triple Inverter',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:21,wifi:false,pL:24642,pE:25442,tipo:'inv'},
+{id:'yc110_1',m:'York R-410',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:6626,pE:7226,tipo:'conv'},
+{id:'yc220_1',m:'York R-410',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:6405,pE:7005,tipo:'conv'},
+{id:'yc220_15',m:'York R-410',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:9795,pE:10495,tipo:'conv'},
+{id:'yc220_2',m:'York R-410',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:12832,pE:13632,tipo:'conv'},
+// ── WHIRLPOOL ─────────────────────────────────────────────
+{id:'wp_2',m:'Whirlpool Blanco',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:18,wifi:false,pL:8999,pE:14750,tipo:'inv'},
+// ── TCL ───────────────────────────────────────────────────
+{id:'tcl110_1',m:'TCL',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:17,wifi:false,pL:6050,pE:null,tipo:'inv'},
+{id:'tcl220_1',m:'TCL',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:17,wifi:false,pL:6050,pE:null,tipo:'inv'},
+{id:'tcl220_15',m:'TCL',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:17,wifi:false,pL:8570,pE:null,tipo:'inv'},
+{id:'tcl220_2',m:'TCL',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:17,wifi:false,pL:10917,pE:null,tipo:'inv'},
+{id:'tcl220_3',m:'TCL',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:17,wifi:false,pL:17171,pE:null,tipo:'inv'},
+// ── UNITED APPLIANCES ─────────────────────────────────────
+{id:'ua110_1',m:'United Appliances 17 SEERS',mod:'Inverter',sf:'FC',v:'110V',t:1,seer:17,wifi:false,pL:7140,pE:7740,tipo:'inv'},
+{id:'ua220_1',m:'United Appliances 17 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1,seer:17,wifi:false,pL:5230,pE:5830,tipo:'inv'},
+{id:'ua220_15',m:'United Appliances 17 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:1.5,seer:17,wifi:false,pL:8070,pE:8770,tipo:'inv'},
+{id:'ua220_2',m:'United Appliances 17 SEERS',mod:'Inverter',sf:'FC',v:'220V',t:2,seer:17,wifi:false,pL:10650,pE:11450,tipo:'inv'},
+{id:'uac110_1',m:'United Appliances',mod:'Convencional',sf:'FC',v:'110V',t:1,seer:12,wifi:false,pL:4370,pE:4970,tipo:'conv'},
+{id:'uac220_1',m:'United Appliances',mod:'Convencional',sf:'FC',v:'220V',t:1,seer:12,wifi:false,pL:4330,pE:4930,tipo:'conv'},
+{id:'uac220_15',m:'United Appliances',mod:'Convencional',sf:'FC',v:'220V',t:1.5,seer:12,wifi:false,pL:6860,pE:7560,tipo:'conv'},
+{id:'uac220_2',m:'United Appliances',mod:'Convencional',sf:'FC',v:'220V',t:2,seer:12,wifi:false,pL:9050,pE:9850,tipo:'conv'},
+// ── TERSUS ────────────────────────────────────────────────
+{id:'te220_3',m:'Tersus',mod:'Inverter',sf:'FC',v:'220V',t:3,seer:21,wifi:false,pL:18000,pE:null,tipo:'inv'},
+];
+
+// ═══════════ UTILS ═══════════
+const fmt=n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0}).format(Math.round(n));
+const today=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+const uid=()=>Math.random().toString(36).slice(2);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const garFor=m=>PREM_BRANDS.some(p=>m&&m.toLowerCase().includes(p.toLowerCase()))?GAR_PREM:GAR_STD;
+const isGarPrem=m=>PREM_BRANDS.some(p=>m&&m.toLowerCase().includes(p.toLowerCase()));
+
+function eqPrice(eq,foraneo){
+  if(eq.precioOverride!=null) return eq.precioOverride;
+  if(foraneo&&eq.pE) return eq.pE;
+  return eq.pL;
+}
+
+// ═══════════ STORAGE ═══════════
+function loadCat(){try{const s=localStorage.getItem('cim4_cat');return s?JSON.parse(s):BASE_CAT;}catch(e){return BASE_CAT;}}
+function saveCat(d){try{localStorage.setItem('cim4_cat',JSON.stringify(d));}catch(e){}}
+function loadFavs(){try{const s=localStorage.getItem('cim4_favs');return s?new Set(JSON.parse(s)):new Set(['mv32_220_1','hi220_1','cx220_1']);}catch(e){return new Set(['mv32_220_1','hi220_1','cx220_1']);}}
+function saveFavs(s){try{localStorage.setItem('cim4_favs',JSON.stringify([...s]));}catch(e){}}
+
+// ═══════════ STATE ═══════════
+let S={
+  step:0,tipo:'T1',modo:'opciones',quoter:'miguel',folio:'CIM-'+new Date().getFullYear()+'-'+String(Math.floor(Math.random()*900)+100).padStart(3,'0'),
+  foraneo:false,esDepto:false,usaZonas:false,
+  cli:{nombre:'',empresa:'',tel:'',correo:'',dir:'',ciudad:'Monterrey, N.L.',ref:''},
+  zonas:[],eqs:[],insts:[],svcs:[],
+  t2extras:[
+    {id:'t2_inst',l:'Instalación básica mini split',activo:false,p:1500},
+    {id:'t2_elec',l:'Instalación eléctrica (mano de obra)',activo:false,p:700},
+    {id:'t2_des',l:'Desinstalación equipo anterior',activo:false,p:700},
+  ],
+  t2custom:[],
+  editingPriceIdx:null,
+  editingEqDetails:null,
+  descuento:{tipo:'none',valor:0},
+  anticipo:{activo:false,monto:0},
+  conds:{
+    pago:'50% anticipo / 50% al finalizar',
+    pagos:{transferencia:true,tarjeta:true,meses:true,otro:false},
+    vig:'15 días hábiles',
+    ivaLabor:false,ivaDesglose:false,
+    gar:true,dif:true,cobre:false,deslinde:false,notas:'',
+    entregaInfo:'',entregaModalidad:'domicilio',
+  },
+  fotos:[],
+  catalog:loadCat(),favs:loadFavs(),
+  modal:null,pickerTarget:null,pickerSearch:'',
+};
+
+function set(patch){Object.assign(S,patch);render();}
+
+function syncForm(){
+  const v=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  if(S.step===0){
+    S.folio=v('f_folio')||S.folio;
+    S.conds.entregaInfo=v('f_entrega_info')||S.conds.entregaInfo;
+  }
+  if(S.step===1) S.cli={nombre:v('f_nombre'),empresa:v('f_empresa'),tel:v('f_tel'),correo:v('f_correo'),dir:v('f_dir'),ciudad:v('f_ciudad'),ref:v('f_ref')};
+  if(S.step===3){
+    S.conds.notas=v('f_notas');
+    S.descuento.valor=parseFloat(v('f_desc_val'))||0;
+    if(S.anticipo.activo) S.anticipo.monto=parseFloat(v('f_anticipo_monto'))||0;
+    S.t2extras=S.t2extras.map(ex=>{const inp=document.querySelector(`.t2extra-price[data-id="${ex.id}"]`);return inp?{...ex,p:parseFloat(inp.value)||ex.p}:ex;});
+    S.t2custom=S.t2custom.map((ci,idx)=>{
+      const n=document.querySelector(`.t2c-nombre[data-idx="${idx}"]`);
+      const q=document.querySelector(`.t2c-qty[data-idx="${idx}"]`);
+      const p=document.querySelector(`.t2c-precio[data-idx="${idx}"]`);
+      return{...ci,nombre:n?n.value:ci.nombre,qty:q?Math.max(1,parseInt(q.value)||1):ci.qty,p:p?parseFloat(p.value)||ci.p:ci.p};
+    });
+    S.insts=S.insts.map(x=>{const q=document.querySelector(`.inst-qty[data-id="${x.id}"]`);const p=document.querySelector(`.inst-pfinal[data-id="${x.id}"]`);return{...x,qty:q?Math.max(1,parseInt(q.value)||1):x.qty,pFinal:p?parseFloat(p.value)||null:x.pFinal};});
+    S.svcs=S.svcs.map(x=>{const q=document.querySelector(`.svc-qty[data-id="${x.id}"]`);const p=document.querySelector(`.svc-pfinal[data-id="${x.id}"]`);return{...x,qty:q?Math.max(1,parseInt(q.value)||1):x.qty,pFinal:p?parseFloat(p.value)||null:x.pFinal};});
+  }
+  if(S.step===4){S.conds.pago=v('f_pago')||S.conds.pago;S.conds.vig=v('f_vig')||S.conds.vig;}
+  if(S.step===5) S.conds.entregaInfo=v('f_entrega_info')||S.conds.entregaInfo;
+}
+function goStep(n){syncForm();set({step:n});}
+
+// ═══════════ TOTALS ═══════════
+function totOpciones(){
+  const instT=S.insts.reduce((a,x)=>a+(x.pFinal??x.p)*(x.qty??1),0);
+  const svcT=S.svcs.reduce((a,x)=>a+(x.pFinal??x.p)*(x.qty??1),0);
+  const labor=instT+svcT;
+  const ivaL=S.conds.ivaLabor?labor*.16:0;
+  const eqX=opt=>S.zonas.reduce((a,z)=>a+(z.opts[opt]?eqPrice(z.opts[opt],S.foraneo):0),0);
+  const eA=eqX(0),eB=eqX(1),eC=eqX(2);
+  const descFn=tot=>{if(S.descuento.tipo==='pct')return tot*(S.descuento.valor/100);if(S.descuento.tipo==='fijo')return S.descuento.valor;return 0;};
+  const tA=eA+labor+ivaL-descFn(eA+labor+ivaL);
+  const tB=eB+labor+ivaL-descFn(eB+labor+ivaL);
+  const tC=eC+labor+ivaL-descFn(eC+labor+ivaL);
+  return{eA,eB,eC,labor,ivaL,tA,tB,tC};
+}
+function totEspecifico(){
+  const eqT=S.eqs.reduce((a,x)=>a+eqPrice(x,S.foraneo)*x.qty,0);
+  const instT=S.insts.reduce((a,x)=>a+(x.pFinal??x.p)*(x.qty??1),0);
+  const svcT=S.svcs.reduce((a,x)=>a+(x.pFinal??x.p)*(x.qty??1),0);
+  const labor=instT+svcT;
+  const ivaL=S.conds.ivaLabor?labor*.16:0;
+  let sub=eqT+labor+ivaL;
+  let desc=S.descuento.tipo==='pct'?sub*(S.descuento.valor/100):S.descuento.tipo==='fijo'?S.descuento.valor:0;
+  const total=sub-desc;
+  const saldo=S.anticipo.activo?total-S.anticipo.monto:null;
+  return{eqT,labor,ivaL,sub,desc,total,saldo};
+}
+
+// ═══════════ SVG LOGO ═══════════
+function logo(h){h=h||44;return `<svg height="${h}" viewBox="0 0 220 78" xmlns="http://www.w3.org/2000/svg" style="display:block"><text x="2" y="18" font-family="Georgia,serif" font-size="14" fill="${N}" letter-spacing="2.5">Climas</text><line x1="54" y1="13" x2="218" y2="13" stroke="${G}" stroke-width="2.5"/><text x="2" y="56" font-family="'Arial Black','Arial Bold',Arial,sans-serif" font-size="40" font-weight="900" fill="${G}">In</text><text x="46" y="56" font-family="'Arial Black','Arial Bold',Arial,sans-serif" font-size="40" font-weight="900" fill="${N}">verter</text><text x="68" y="74" font-family="Georgia,serif" font-size="15" fill="${N}" letter-spacing="2">Monterrey</text></svg>`;}
+const FB=`<svg width="14" height="14" viewBox="0 0 24 24" fill="#1877F2" style="flex-shrink:0"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`;
+const IG=`<svg width="14" height="14" viewBox="0 0 24 24" style="flex-shrink:0"><defs><linearGradient id="ig2" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#f09433"/><stop offset="50%" style="stop-color:#dc2743"/><stop offset="100%" style="stop-color:#bc1888"/></linearGradient></defs><path fill="url(#ig2)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>`;
+
+// ═══════════ BUILD HTML ═══════════
+function secT(t){return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><div style="width:3px;min-width:3px;height:16px;background:${G};border-radius:2px"></div><span style="font-size:12px;font-weight:700;color:${N};text-transform:uppercase;letter-spacing:.7px">${t}</span></div>`;}
+
+function stepper(){
+  return `<div class="stepper no-print" style="display:flex;align-items:flex-start;justify-content:center;padding:12px 6px 8px;background:#fff;border-bottom:1px solid #e8eaf0;overflow-x:auto">${STEPS.map((l,i)=>`<div style="display:flex;align-items:center"><div style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:44px"><div style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;background:${S.step>i?G:S.step===i?N:'#ddd'};color:${S.step>i||S.step===i?'#fff':'#999'}">${S.step>i?'✓':i+1}</div><span style="font-size:8px;color:${S.step===i?N:S.step>i?G:'#bbb'};font-weight:${S.step===i?700:400};text-align:center;line-height:1.2">${l}</span></div>${i<STEPS.length-1?`<div style="width:12px;height:2px;margin:0 1px;margin-bottom:14px;background:${S.step>i?G:'#e0e0e0'}"></div>`:''}</div>`).join('')}</div>`;
+}
+
+// ─── STEP 0 ──────────────────────────────────────────────
+function s0(){
+  return `
+  ${secT('Tipo de documento')}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">${TIPOS.map(t=>`<div class="tipo-btn" data-id="${t.id}" style="border:2px solid ${S.tipo===t.id?G:'#e0e0e0'};border-radius:10px;padding:11px 13px;cursor:pointer;background:${S.tipo===t.id?L:'#fff'}"><div style="font-weight:800;font-size:14px;color:${N}">${t.id}</div><div style="font-size:12px;color:#444;margin:2px 0">${t.l}</div><div style="font-size:11px;color:#888">${t.d}</div>${S.tipo===t.id?`<div style="font-size:11px;color:${G};font-weight:700;margin-top:5px">✓ Seleccionado</div>`:''}</div>`).join('')}</div>
+
+  ${S.tipo!=='T2'&&S.tipo!=='T3'?`
+  ${secT('Modo de cotización')}
+  <div class="toggle-pill" style="margin-bottom:8px">
+    <button class="tpill modo-btn ${S.modo==='opciones'?'on':''}" data-m="opciones">📊 3 Opciones (Confiable / Recomendada / Elite)</button>
+    <button class="tpill modo-btn ${S.modo==='especifico'?'on':''}" data-m="especifico">🎯 Equipo específico</button>
+  </div>
+  <div style="font-size:12px;color:#666;margin-bottom:18px;padding:8px 12px;background:#fff;border-radius:7px;border:1px solid #e0e0e0">${S.modo==='opciones'?'Presenta 3 alternativas por zona. El cliente elige. Ideal para neuroventas — anclas en Elite, cierras en Recomendada.':'El cliente ya sabe qué equipo quiere. Cotización directa.'}</div>
+  `:'<div style="padding:8px 12px;background:#e8f5e9;border-radius:7px;margin-bottom:18px;font-size:12px;color:#2e7d32">✓ Solo Equipos — lista de precios directa (sin comparativo de zonas)</div>'}
+
+  ${S.tipo==='T1'?`
+  ${secT('Opciones residencial')}
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:9px;padding:12px;margin-bottom:18px;display:flex;flex-direction:column;gap:8px">
+    <label class="chk-row"><input type="checkbox" id="chk_zonas" ${S.usaZonas?'checked':''}><span>Incluir zonas por espacio (fuimos a medir / cotización con visita técnica)</span></label>
+    <label class="chk-row"><input type="checkbox" id="chk_depto" ${S.esDepto?'checked':''}><span>Es departamento (se incluirá recomendación de tubo de cobre)</span></label>
+  </div>`:''}
+
+  ${secT('Entrega')}
+  <div class="toggle-pill" style="margin-bottom:${S.foraneo?'10px':'18px'}">
+    <button class="tpill foraneo-btn ${!S.foraneo?'on':''}" data-f="0">📍 Local (MTY y AMM)</button>
+    <button class="tpill foraneo-btn ${S.foraneo?'on':''}" data-f="1">🚚 Foráneo</button>
+  </div>
+  ${S.foraneo?`<div style="background:#fff;border:1px solid #e0e0e0;border-radius:9px;padding:12px;margin-bottom:18px">
+    <div style="font-size:11px;color:#666;font-weight:500;margin-bottom:8px">Modalidad de entrega:</div>
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+      ${[['domicilio','🏠 A domicilio del cliente'],['sucursal','🏢 En sucursal / almacén'],['plataforma','📦 Sobre plataforma (flete externo)']].map(([k,l])=>`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="radio" class="mod-btn" name="entrega_mod" value="${k}" ${S.conds.entregaModalidad===k?'checked':''} style="accent-color:${G};width:15px;height:15px"><span>${l}</span></label>`).join('')}
+    </div>
+    <label style="font-size:11px;color:#666;font-weight:500;display:block;margin-bottom:4px">Ciudad / destino de envío:</label>
+    <input id="f_entrega_info" type="text" value="${esc(S.conds.entregaInfo)}" placeholder="Ciudad de México, CDMX · CP 06600">
+    <div style="font-size:11px;color:#888;margin-top:5px">Los precios foráneos ya incluyen el costo de flete.</div>
+  </div>`:''}
+
+  ${secT('Quién cotiza')}
+  <div style="display:flex;gap:8px;margin-bottom:18px">${Object.entries(QUOTERS).map(([k,q])=>`<div class="quoter-btn" data-q="${k}" style="flex:1;border:2px solid ${S.quoter===k?G:'#e0e0e0'};border-radius:9px;padding:10px 12px;cursor:pointer;background:${S.quoter===k?L:'#fff'}"><div style="font-weight:700;font-size:13px;color:${N}">${q.nombre}</div><div style="font-size:11px;color:#666;margin-top:2px">${q.tel}</div><div style="font-size:11px;color:#666">${q.email}</div>${S.quoter===k?`<div style="font-size:11px;color:${G};font-weight:600;margin-top:4px">✓ Activo</div>`:''}</div>`).join('')}</div>
+
+  ${secT('Folio')}
+  <div style="display:flex;gap:10px;align-items:center">
+    <input id="f_folio" type="text" value="${esc(S.folio)}" style="max-width:200px">
+    <span style="font-size:12px;color:#888">Editable — sigue tu secuencia</span>
+  </div>`;
+}
+
+// ─── STEP 1 ──────────────────────────────────────────────
+function s1(){
+  return `${secT('Datos del cliente')}
+  <div style="display:flex;flex-wrap:wrap;gap:10px">
+    <div style="flex:1 1 100%;display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Nombre completo *</label><input id="f_nombre" type="text" value="${esc(S.cli.nombre)}" placeholder="Lic. Juan García Pérez"></div>
+    <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Empresa</label><input id="f_empresa" type="text" value="${esc(S.cli.empresa)}" placeholder="(opcional)"></div>
+    <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Teléfono / WhatsApp</label><input id="f_tel" type="text" value="${esc(S.cli.tel)}" placeholder="81 XXXX XXXX"></div>
+    <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Correo electrónico</label><input id="f_correo" type="text" value="${esc(S.cli.correo)}" placeholder="correo@ejemplo.com"></div>
+    <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Ciudad</label><input id="f_ciudad" type="text" value="${esc(S.cli.ciudad)}"></div>
+    <div style="flex:1 1 100%;display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Dirección del inmueble</label><input id="f_dir" type="text" value="${esc(S.cli.dir)}" placeholder="Calle, número, colonia"></div>
+    <div style="flex:1 1 100%;display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Proyecto / Referencia</label><input id="f_ref" type="text" value="${esc(S.cli.ref)}" placeholder="Torre Stella depto 401, KS Services..."></div>
+  </div>`;
+}
+
+// ─── STEP 2 ──────────────────────────────────────────────
+function eqCard(eq,compact){
+  const p=eqPrice(eq,S.foraneo);
+  if(compact) return `<strong style="color:${N}">${eq.m}</strong><br><span style="color:#555;font-size:10px">${eq.t}T · ${eq.v} · ${eq.sf==='FC'?'Frío-Calor':'Solo Frío'}</span><br><span style="color:${G};font-weight:700;font-size:12px">${fmt(p)}</span><br><span class="seer-badge">${eq.seer} SEER</span> ${eq.wifi?'<span class="wifi-badge">WiFi</span>':''}`;
+  return '';
+}
+
+function s2(){
+  if(S.tipo==='T2'||S.tipo==='T3') return s2single();
+  if(S.modo==='opciones') return s2ops();
+  return s2single();
+}
+
+function s2ops(){
+  const zCards=S.zonas.map(z=>`
+    <div class="zone-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <select class="z-nombre" data-zid="${z.id}" style="flex:0 0 auto;width:auto;min-width:150px">${ZONAS_LIST.map(n=>`<option ${z.nombre===n?'selected':''}>${n}</option>`).join('')}</select>
+        ${z.nombre==='Otro (especificar)'?`<input class="z-libre" data-zid="${z.id}" type="text" value="${esc(z.libre)}" placeholder="Nombre de zona" style="flex:1;min-width:100px">`:'' }
+        <button class="rm-zona" data-zid="${z.id}" style="background:none;border:none;color:#c00;font-size:18px;cursor:pointer;margin-left:auto">✕</button>
+      </div>
+      ${S.usaZonas?`<div style="margin-bottom:8px"><input class="z-nota" data-zid="${z.id}" type="text" value="${esc(z.nota)}" placeholder="Nota técnica: techo 3.5m, drenaje existente, pared norte..."></div>`:''}
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        ${[0,1,2].map(oi=>`<div>
+          <div style="font-size:10px;font-weight:700;color:${oi===1?G:N};text-align:center;margin-bottom:3px">${oi===1?'⭐ ':''} ${OPT_NAMES[oi]}</div>
+          ${z.opts[oi]
+            ?`<div class="opt-filled pick-btn" data-zid="${z.id}" data-oi="${oi}">${eqCard(z.opts[oi],true)}<br><span style="color:#aaa;font-size:9px">Toca para cambiar</span></div>
+              <button class="rm-opt" data-zid="${z.id}" data-oi="${oi}" style="width:100%;margin-top:2px;background:none;border:1px solid #f0c0c0;border-radius:5px;color:#c00;font-size:11px;padding:2px;cursor:pointer">Quitar</button>`
+            :`<div class="opt-slot pick-btn" data-zid="${z.id}" data-oi="${oi}">+ Seleccionar<br><span style="font-size:10px;margin-top:2px;display:block">${OPT_NAMES[oi]}</span></div>`
+          }
+        </div>`).join('')}
+      </div>
+    </div>`).join('');
+
+  return `${secT('Zonas y equipos — 3 opciones')}
+  <div style="margin-bottom:12px;font-size:12px;color:#666;background:#fff;padding:8px 12px;border-radius:7px;border:1px solid #e0e0e0">Agrega una zona por espacio. Para cada zona selecciona Confiable · Recomendada · Elite. Los totales se calculan por columna automáticamente.</div>
+  ${zCards}
+  <button id="add-zona" class="btn-ghost" style="width:100%;margin-top:4px">+ Agregar zona</button>`;
+}
+
+function s2single(){
+  const rows=S.eqs.map((x,i)=>{
+    const p=eqPrice(x,S.foraneo);
+    const isEditing=S.editingPriceIdx===i;
+    const priceCell=isEditing
+      ?`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+          <input type="number" class="eq-price-input" data-i="${i}" value="${x.precioOverride??p}"
+            style="width:92px;padding:4px 7px;font-size:13px;font-weight:700;text-align:right;border:2px solid ${G};border-radius:6px;color:${N}">
+          <span style="font-size:9px;color:#999">Enter / Esc</span>
+        </div>`
+      :`<div style="text-align:right;min-width:80px">
+          ${x.precioOverride!=null?`<div style="font-size:9px;color:${G};font-weight:600">Precio editado</div>`:''}
+          <div style="font-weight:700;font-size:12px;color:${N}">${fmt(p)}</div>
+          <button class="eq-price-btn" data-i="${i}" style="background:none;border:none;font-size:10px;color:#aaa;cursor:pointer;padding:1px 0;display:flex;align-items:center;gap:2px;margin-left:auto">✏️ editar</button>
+        </div>`;
+    return `<div style="background:${L};border:1px solid ${G}44;border-radius:8px;padding:9px 11px;margin-bottom:6px;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:140px">
+        <div style="font-size:12px;font-weight:700;color:${N}">${x.m} <span style="font-size:11px;font-weight:400;color:#888">${x.mod||''}</span></div>
+        <div style="font-size:11px;color:#555">${x.t}T · ${x.v} · ${x.sf==='FC'?'Frío-Calor':'Solo Frío'}</div>
+        ${x.desc?`<div style="font-size:11px;color:#666;margin-top:2px;font-style:italic">${esc(x.desc)}</div>`:''}
+        <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap"><span class="seer-badge">${x.seer} SEER</span>${x.wifi?'<span class="wifi-badge">WiFi</span>':''}</div>
+        <button class="eq-edit-btn" data-i="${i}" style="background:none;border:none;font-size:11px;color:#888;cursor:pointer;padding:2px 0;margin-top:2px">✏️ editar datos</button>
+      </div>
+      ${(S.tipo==='T1'&&S.usaZonas)||S.tipo==='T4'?`<select class="eq-zona" data-i="${i}" style="font-size:12px;flex:1;min-width:120px"><option value="">— Sin zona —</option>${ZONAS_LIST.map(n=>`<option ${x.zona===n?'selected':''}>${n}</option>`).join('')}</select>`:''}
+      ${S.usaZonas?`<input class="eq-nota" data-i="${i}" type="text" value="${esc(x.nota||'')}" placeholder="Nota técnica..." style="font-size:12px;flex:1;min-width:120px">`:''}
+      <div style="display:flex;align-items:center;gap:5px"><label style="font-size:11px;color:#666">Cant.</label><input type="number" min="1" max="20" value="${x.qty}" class="eq-qty" data-i="${i}" style="width:44px;padding:4px 6px;font-size:12px;text-align:center"></div>
+      ${priceCell}
+      <button class="rm-eq" data-i="${i}" style="background:none;border:none;color:#c00;font-size:17px;cursor:pointer">✕</button>
+    </div>`;
+  }).join('');
+  const skipLabel=S.tipo==='T3'?'(opcional — solo si también se vende un equipo)':S.tipo==='T2'?'— Solo suministro de equipos':'';
+  return `${secT(`Equipos ${skipLabel}`)}
+  ${rows}
+  <button id="open-picker-single" class="btn-ghost" style="width:100%;margin-top:4px">+ Agregar equipo</button>
+  ${S.tipo==='T3'?`<div style="margin-top:10px;padding:9px 12px;background:#fff9e6;border:1px solid #f0d060;border-radius:7px;font-size:12px;color:#7a6000">ℹ️ Para T3 los equipos son opcionales. Si solo cotizas servicio, continúa al siguiente paso.</div>`:''}
+  ${S.tipo==='T2'?`<div style="margin-top:10px;padding:9px 12px;background:${L};border:1px solid ${G}44;border-radius:7px;font-size:12px;color:#555">ℹ️ Agrega los equipos que el cliente quiere cotizar. En el siguiente paso podrás incluir servicios opcionales.</div>`:''}`;
+}
+
+// ─── STEP 3 ──────────────────────────────────────────────
+function s3(){
+  const {total}=S.modo==='especifico'?totEspecifico():{total:0};
+
+  // Inst cards con qty y precio editable
+  const instCards=INST_OPTS.map(i=>{
+    const sel=S.insts.find(x=>x.id===i.id);
+    const pShow=sel?(sel.pFinal??i.p):i.p;
+    return `<div class="inst-card" data-id="${i.id}" style="border:2px solid ${sel?G:'#e0e0e0'};border-radius:8px;padding:9px 11px;cursor:pointer;background:${sel?L:'#fff'}">
+      <div style="font-size:12px;font-weight:600;color:${N}">${i.l}</div>
+      ${sel?`<div onclick="event.stopPropagation()" style="margin-top:7px;display:flex;flex-direction:column;gap:5px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:11px;color:#555">Cant.</label>
+          <input type="number" class="inst-qty" data-id="${i.id}" value="${sel.qty??1}" min="1" max="50"
+            style="width:46px;padding:3px 5px;font-size:12px;text-align:center;border:1.5px solid ${G};border-radius:5px"
+            onclick="event.stopPropagation()">
+          <label style="font-size:11px;color:#555">Precio $</label>
+          <input type="number" class="inst-pfinal" data-id="${i.id}" value="${pShow}"
+            style="width:80px;padding:3px 5px;font-size:12px;font-weight:700;text-align:right;border:1.5px solid ${G};border-radius:5px;color:${N}"
+            onclick="event.stopPropagation()">
+        </div>
+        <div style="font-size:11px;color:${G};font-weight:600">✓ Incluido · Total: ${fmt(pShow*(sel.qty??1))}</div>
+      </div>`
+      :`<div style="font-size:12px;color:${G};font-weight:700;margin-top:2px">${i.p>0?fmt(i.p):'Por proyecto — agregar precio'}</div>`}
+    </div>`;
+  }).join('');
+
+  // Svc cards con qty y precio editable
+  const svcCards=SVC_OPTS.map(s=>{
+    const sel=S.svcs.find(x=>x.id===s.id);
+    const pShow=sel?(sel.pFinal??s.p):s.p;
+    return `<div class="svc-card" data-id="${s.id}" style="border:2px solid ${sel?G:'#e0e0e0'};border-radius:8px;padding:9px 11px;cursor:pointer;background:${sel?L:'#fff'}">
+      <div style="font-size:12px;font-weight:600;color:${N}">${s.l}</div>
+      ${sel?`<div onclick="event.stopPropagation()" style="margin-top:7px;display:flex;flex-direction:column;gap:5px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:11px;color:#555">Cant.</label>
+          <input type="number" class="svc-qty" data-id="${s.id}" value="${sel.qty??1}" min="1" max="50"
+            style="width:46px;padding:3px 5px;font-size:12px;text-align:center;border:1.5px solid ${G};border-radius:5px"
+            onclick="event.stopPropagation()">
+          <label style="font-size:11px;color:#555">Precio $</label>
+          <input type="number" class="svc-pfinal" data-id="${s.id}" value="${pShow}"
+            style="width:80px;padding:3px 5px;font-size:12px;font-weight:700;text-align:right;border:1.5px solid ${G};border-radius:5px;color:${N}"
+            onclick="event.stopPropagation()">
+        </div>
+        <div style="font-size:11px;color:${G};font-weight:600">✓ Incluido · Total: ${fmt(pShow*(sel.qty??1))}</div>
+      </div>`
+      :`<div style="font-size:12px;color:${G};font-weight:700;margin-top:2px">${fmt(s.p)}</div>`}
+    </div>`;
+  }).join('');
+
+  // T2 extras + custom items opcionales
+  const t2Section=S.tipo==='T2'?`
+  ${secT('Servicios opcionales para incluir en propuesta')}
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:9px;padding:12px;margin-bottom:16px">
+    <div style="font-size:12px;color:#666;margin-bottom:10px">⚠️ Estos servicios <strong>NO se suman al total</strong> — aparecen como opcionales al pie de la cotización con su precio.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      ${S.t2extras.map(ex=>`<div class="t2extra-card" data-id="${ex.id}"
+        style="border:2px solid ${ex.activo?G:'#e0e0e0'};border-radius:8px;padding:9px 11px;cursor:pointer;background:${ex.activo?L:'#fff'}">
+        <div style="font-size:11px;font-weight:600;color:${N};line-height:1.3">${ex.l}</div>
+        ${ex.activo
+          ?`<input type="number" class="t2extra-price" data-id="${ex.id}" value="${ex.p}" min="0"
+              style="width:100%;padding:4px 6px;font-size:13px;font-weight:700;text-align:center;border:1.5px solid ${G};border-radius:5px;margin-top:6px;color:${N}"
+              onclick="event.stopPropagation()">
+            <div style="font-size:10px;color:${G};font-weight:600;text-align:center;margin-top:3px">✓ Incluido</div>`
+          :`<div style="font-size:12px;color:#aaa;margin-top:4px">${fmt(ex.p)}</div>`
+        }
+      </div>`).join('')}
+    </div>
+    ${S.t2custom.length>0?S.t2custom.map((ci,idx)=>`<div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;background:${L};border:1px solid ${G}44;border-radius:7px;padding:7px 9px;flex-wrap:wrap">
+      <input type="text" class="t2c-nombre" data-idx="${idx}" value="${esc(ci.nombre)}" placeholder="Ej: Kit instalación, tubería cobre, cable..."
+        style="flex:1;min-width:120px;font-size:12px;border:1.5px solid ${G};border-radius:5px;padding:4px 7px">
+      <label style="font-size:11px;color:#555">Cant.</label>
+      <input type="number" class="t2c-qty" data-idx="${idx}" value="${ci.qty}" min="1"
+        style="width:44px;padding:3px 5px;font-size:12px;text-align:center;border:1.5px solid ${G};border-radius:5px">
+      <label style="font-size:11px;color:#555">$</label>
+      <input type="number" class="t2c-precio" data-idx="${idx}" value="${ci.p}" min="0"
+        style="width:80px;padding:3px 5px;font-size:12px;font-weight:700;text-align:right;border:1.5px solid ${G};border-radius:5px;color:${N}">
+      <button class="rm-t2c" data-idx="${idx}" style="background:none;border:none;color:#c00;font-size:16px;cursor:pointer">✕</button>
+    </div>`).join(''):''}
+    <button id="add-t2custom" class="btn-ghost" style="width:100%;font-size:12px;margin-top:4px">+ Agregar concepto (material, servicio, kit, otro)</button>
+  </div>`:'';
+
+  return `
+  ${S.tipo==='T3'?`<div style="padding:10px 12px;background:${L};border:1px solid ${G}44;border-radius:8px;margin-bottom:16px;font-size:12px;color:#555"><strong style="color:${N}">Nota:</strong> El costo de diagnóstico es reembolsable si el cliente acepta la reparación o cotización presentada.</div>`:''}
+  ${t2Section}
+  ${secT('Instalación y materiales')}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">${instCards}</div>
+  ${secT('Servicios / mantenimiento')}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">${svcCards}</div>
+  ${secT('Descuento')}
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:9px;padding:12px;margin-bottom:16px">
+    <div class="toggle-pill" style="margin-bottom:10px">
+      ${[['none','Sin descuento'],['pct','Porcentaje %'],['fijo','Monto fijo']].map(([k,l])=>`<button class="tpill desc-btn ${S.descuento.tipo===k?'on':''}" data-dt="${k}">${l}</button>`).join('')}
+    </div>
+    ${S.descuento.tipo!=='none'?`<div style="display:flex;align-items:center;gap:10px"><input id="f_desc_val" type="number" value="${S.descuento.valor}" min="0" style="max-width:120px" placeholder="${S.descuento.tipo==='pct'?'Ej: 10':'Ej: 500'}"><span style="font-size:13px;color:#666">${S.descuento.tipo==='pct'?'%':'MXN'}</span></div>`:''}
+  </div>
+  ${secT('Anticipo recibido')}
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:9px;padding:12px;margin-bottom:16px">
+    <label class="chk-row" style="margin-bottom:${S.anticipo.activo?'10px':'0'}"><input type="checkbox" id="chk_anticipo" ${S.anticipo.activo?'checked':''}><span>El cliente dio anticipo</span></label>
+    ${S.anticipo.activo?`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666">Monto anticipo</label><input id="f_anticipo_monto" type="number" value="${S.anticipo.monto}" min="0" style="max-width:140px"></div>
+      ${total>0?`<div style="font-size:12px;color:#555">Saldo pendiente: <strong style="color:${N}">${fmt(Math.max(0,total-S.anticipo.monto))}</strong></div>`:''}
+    </div>`:''}
+  </div>
+  ${secT('Notas adicionales')}
+  <textarea id="f_notas" style="min-height:60px;resize:vertical" placeholder="Observaciones, alcances adicionales...">${esc(S.conds.notas)}</textarea>`;
+}
+
+// ─── STEP 4 ──────────────────────────────────────────────
+function s4(){
+  const pagoOpts=['50% anticipo / 50% al finalizar','50% anticipo / 50% al entregar','Pago al terminar el trabajo','Pago al recibir las unidades','Anticipo acordado + liquidación antes de entrega','100% para embarque','Pago a convenir'];
+  return `${secT('Condiciones de pago')}
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+    <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Condición de pago</label>
+      <select id="f_pago">${pagoOpts.map(o=>`<option ${S.conds.pago===o?'selected':''}>${o}</option>`).join('')}</select></div>
+    <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Vigencia</label>
+      <select id="f_vig">${['15 días hábiles','20 días hábiles','30 días naturales'].map(o=>`<option ${S.conds.vig===o?'selected':''}>${o}</option>`).join('')}</select></div>
+  </div>
+  ${secT('Formas de pago disponibles (selecciona las que aplican)')}
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:9px;padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px">
+    <label class="chk-row"><input type="checkbox" id="chk_p_transf" ${S.conds.pagos.transferencia?'checked':''}><span>Transferencia electrónica o efectivo <span style="color:#888;font-size:12px">(preferente)</span></span></label>
+    <label class="chk-row"><input type="checkbox" id="chk_p_tarjeta" ${S.conds.pagos.tarjeta?'checked':''}><span>Tarjeta bancaria en una sola exhibición <span style="color:#888;font-size:12px">(+1.9% comisión bancaria)</span></span></label>
+    <label class="chk-row"><input type="checkbox" id="chk_p_meses" ${S.conds.pagos.meses?'checked':''}><span>Meses diferidos con tarjeta de crédito <span style="color:#888;font-size:12px">(cargo según plazo, consultar)</span></span></label>
+    <label class="chk-row"><input type="checkbox" id="chk_p_otro" ${S.conds.pagos.otro?'checked':''}><span>Otro <span style="color:#888;font-size:12px">(especificar en notas)</span></span></label>
+  </div>
+  ${secT('Opciones adicionales')}
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:9px;padding:14px;display:flex;flex-direction:column;gap:8px">
+    <label class="chk-row"><input type="checkbox" id="chk_iva" ${S.conds.ivaLabor?'checked':''}><span>Agregar IVA (16%) a mano de obra y materiales <span style="color:#888;font-size:12px">(equipos ya lo incluyen)</span></span></label>
+    <label class="chk-row"><input type="checkbox" id="chk_iva_des" ${S.conds.ivaDesglose?'checked':''}><span>Desglosar IVA para empresa <span style="color:#888;font-size:12px">(muestra neto + IVA sin aumentar el total — para factura)</span></span></label>
+    <label class="chk-row"><input type="checkbox" id="chk_gar" ${S.conds.gar?'checked':''}><span>Incluir sección de garantías (+6 meses tarjetas con equipo + instalación CIM)</span></label>
+    <label class="chk-row"><input type="checkbox" id="chk_dif" ${S.conds.dif?'checked':''}><span>Incluir diferenciadores técnicos (hermeticidad, vacío profundo, neoprene antivibración)</span></label>
+    <label class="chk-row"><input type="checkbox" id="chk_cobre" ${S.conds.cobre?'checked':''}><span>Incluir recomendación de tubería de cobre</span></label>
+    <label class="chk-row"><input type="checkbox" id="chk_deslinde" ${S.conds.deslinde?'checked':''}><span>Incluir cláusula de deslinde (nichos / drenajes por terceros)</span></label>
+  </div>`;
+}
+
+// ─── STEP 5 ──────────────────────────────────────────────
+function s5(){
+  const modOpts=[['domicilio','🏠 A domicilio del cliente'],['sucursal','🏢 En sucursal / almacén'],['plataforma','📦 Sobre plataforma (flete externo)']];
+  return `${secT('Entrega — '+(!S.foraneo?'Local MTY / AMM':'Foráneo'))}
+  ${!S.foraneo?`<div style="padding:12px;background:${L};border:1px solid ${G}44;border-radius:8px;font-size:12px;margin-bottom:14px">
+    <div style="font-weight:600;color:${N};margin-bottom:4px">📍 Entrega en Monterrey y Área Metropolitana</div>
+    <div style="color:#555">· Sin costo en domicilio del cliente dentro de MTY y AMM</div>
+    <div style="color:#555">· Puede recoger en: <strong>Ave. Lerdo de Tejada 400A, San Nicolás de los Garza, N.L.</strong></div>
+  </div>`:`<div style="margin-bottom:14px;background:#fff;border:1px solid #e0e0e0;border-radius:9px;padding:12px">
+    <div style="font-size:11px;color:#666;font-weight:500;margin-bottom:8px">Modalidad de entrega foráneo:</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+      ${modOpts.map(([k,l])=>`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+        <input type="radio" class="mod-btn" name="entrega_mod" value="${k}" ${S.conds.entregaModalidad===k?'checked':''}
+          style="accent-color:${G};width:15px;height:15px">
+        <span>${l}</span>
+      </label>`).join('')}
+    </div>
+    <label style="font-size:11px;color:#666;font-weight:500;display:block;margin-bottom:4px">Ciudad / destino de envío:</label>
+    <input id="f_entrega_info" type="text" value="${esc(S.conds.entregaInfo)}" placeholder="Ciudad de México, CDMX · CP 06600">
+    <div style="font-size:11px;color:#888;margin-top:6px">Los precios foráneos ya incluyen el costo de flete.</div>
+  </div>`}
+  ${secT('Fotos del equipo / instalación')}
+  <div id="foto-drop" style="border:2px dashed ${G};border-radius:10px;padding:22px;text-align:center;cursor:pointer;background:${L};margin-bottom:14px">
+    <div style="font-size:26px;margin-bottom:4px">📷</div>
+    <div style="font-weight:600;color:${N};font-size:13px">Toca para agregar fotos</div>
+    <div style="font-size:11px;color:#777;margin-top:2px">JPG, PNG · máx. 10 archivos</div>
+    <input id="foto-input" type="file" accept="image/*" multiple style="display:none">
+  </div>
+  ${S.fotos.length>0?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${S.fotos.map((f,i)=>`<div style="position:relative"><img src="${f.url}" style="width:100%;height:86px;object-fit:cover;border-radius:7px;border:1px solid #e0e0e0"><button class="rm-foto" data-i="${i}" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer">✕</button></div>`).join('')}</div>`:''}`;
+}
+
+// ─── STEP 6 — VISTA PREVIA ────────────────────────────────
+function s6(){
+  const q=QUOTERS[S.quoter];
+  const tipo2label={T1:'PROPUESTA DE INSTALACIÓN',T2:'COTIZACIÓN DE EQUIPOS',T3:'PROPUESTA DE SERVICIO',T4:'PROPUESTA CORPORATIVA / PROYECTO'};
+  const hdr=`<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid ${N};padding-bottom:12px;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div>${logo(50)}<div style="font-size:10px;color:#777;margin-top:5px">Ave. Lerdo de Tejada 400A, San Nicolás de los Garza, N.L.</div><div style="font-size:10px;color:#777">${q.tel} · ${q.email}</div><div style="font-size:10px;color:#777">Centro de Servicio Autorizado Carrier · +15 años</div></div>
+    <div style="text-align:right"><div style="font-size:15px;font-weight:800;color:${N}">${tipo2label[S.tipo]||'COTIZACIÓN'}</div><div style="font-size:10px;color:#666;margin-top:3px">Folio: <strong>${esc(S.folio)}</strong></div><div style="font-size:10px;color:#666">Fecha: ${today}</div><div style="font-size:10px;color:#666">Vigencia: ${S.conds.vig}</div>${S.foraneo?`<div style="font-size:10px;color:${G};font-weight:600;margin-top:2px">🚚 Precios incluyen envío foráneo</div>`:''}</div>
+  </div>`;
+
+  const cli=`<div style="margin-bottom:12px;padding:9px 12px;background:#f5f7fa;border-radius:7px">
+    <div style="font-size:10px;font-weight:700;color:${N};text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Datos del Cliente</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:11px">
+      <div><span style="color:#888">Nombre: </span><strong>${esc(S.cli.nombre)||'—'}</strong></div>
+      ${S.cli.empresa?`<div><span style="color:#888">Empresa: </span>${esc(S.cli.empresa)}</div>`:''}
+      ${S.cli.tel?`<div><span style="color:#888">Tel.: </span>${esc(S.cli.tel)}</div>`:''}
+      ${S.cli.correo?`<div><span style="color:#888">Correo: </span>${esc(S.cli.correo)}</div>`:''}
+      ${S.cli.ciudad?`<div><span style="color:#888">Ciudad: </span>${esc(S.cli.ciudad)}</div>`:''}
+      ${S.cli.dir?`<div style="grid-column:1/-1"><span style="color:#888">Dirección: </span>${esc(S.cli.dir)}</div>`:''}
+      ${S.cli.ref?`<div style="grid-column:1/-1"><span style="color:#888">Proyecto: </span>${esc(S.cli.ref)}</div>`:''}
+    </div>
+  </div>`;
+
+  // Equipos block
+  let eqBlock='';
+  if(S.modo==='opciones'&&S.zonas.length>0){
+    const {eA,eB,eC,labor,ivaL,tA,tB,tC}=totOpciones();
+    // Solo mostrar columnas que tienen al menos un equipo
+    const colsToShow=[0,1,2].filter(oi=>S.zonas.some(z=>z.opts[oi]));
+    const colHeaders=['Confiable','⭐ Recomendada','Elite'];
+    eqBlock=`<div style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:${N};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Comparativo de Opciones</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:${N};color:#fff">
+          <th style="padding:5px 7px;text-align:left;font-weight:600">Zona</th>
+          ${colsToShow.map(oi=>`<th style="padding:5px 7px;text-align:center;font-weight:600${oi===1?';background:#0d2a6e':''}">${colHeaders[oi]}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${S.zonas.map((z,i)=>{
+            const nm=z.nombre==='Otro (especificar)'?z.libre:z.nombre;
+            return `<tr style="background:${i%2?'#f9f9f9':'#fff'};border-bottom:1px solid #f0f0f0">
+              <td style="padding:6px 7px"><strong>${esc(nm)}</strong>${z.nota?`<br><span style="color:#888;font-size:10px;font-style:italic">${esc(z.nota)}</span>`:''}</td>
+              ${colsToShow.map(oi=>z.opts[oi]?`<td style="padding:6px 7px;text-align:center${oi===1?';background:#f0f4ff':''}">
+                <strong>${esc(z.opts[oi].m)}</strong><br>
+                <span style="color:#555;font-size:10px">${z.opts[oi].t}T · ${z.opts[oi].v}</span><br>
+                <span class="seer-badge">${z.opts[oi].seer} SEER</span> ${z.opts[oi].wifi?'<span class="wifi-badge">WiFi</span>':''}<br>
+                <span style="color:${G};font-weight:700">${fmt(eqPrice(z.opts[oi],S.foraneo))}</span>
+              </td>`:`<td style="padding:6px 7px;text-align:center;color:#ccc">—</td>`).join('')}
+            </tr>`;
+          }).join('')}
+          ${labor>0?`<tr style="background:#f0f0f0;border-top:1px solid #ddd"><td style="padding:5px 7px;font-size:10px;color:#666">Instalación y servicios</td>${colsToShow.map(()=>`<td style="padding:5px 7px;text-align:center;font-size:11px;color:#555">${fmt(labor)}${S.conds.ivaLabor?`<br><span style="font-size:9px">+IVA: ${fmt(ivaL)}</span>`:''}</td>`).join('')}</tr>`:''}
+          <tr style="background:${N};color:#fff;font-weight:700">
+            <td style="padding:6px 7px;font-size:12px">TOTAL</td>
+            ${colsToShow.map((oi)=>{const t=[tA,tB,tC][oi];return`<td style="padding:6px 7px;text-align:center;font-size:13px${oi===1?';background:#0d2a6e':''}">${fmt(t)}</td>`;}).join('')}
+          </tr>
+          ${S.conds.ivaDesglose?`<tr style="background:#f5f7fa"><td style="padding:5px 7px;font-size:10px;color:#888">Subtotal sin IVA</td>${colsToShow.map((oi)=>{const t=[tA,tB,tC][oi];return`<td style="padding:5px 7px;text-align:center;font-size:10px;color:#666">${fmt(Math.round(t/1.16))}</td>`;}).join('')}</tr>
+          <tr style="background:#f5f7fa"><td style="padding:5px 7px;font-size:10px;color:#888">IVA (16%)</td>${colsToShow.map((oi)=>{const t=[tA,tB,tC][oi];return`<td style="padding:5px 7px;text-align:center;font-size:10px;color:#666">${fmt(t-Math.round(t/1.16))}</td>`;}).join('')}</tr>`:''}
+          ${S.anticipo.activo?`<tr style="background:#e8eff8"><td style="padding:5px 7px;font-size:10px;color:#555">Anticipo recibido</td>${colsToShow.map(()=>`<td style="padding:5px 7px;text-align:center;font-size:10px;color:#555">${fmt(S.anticipo.monto)}</td>`).join('')}</tr>`:''}
+        </tbody>
+      </table>
+    </div>`;
+  } else if(S.eqs.length>0||S.insts.length>0||S.svcs.length>0){
+    const {eqT,labor,ivaL,sub,desc,total,saldo}=totEspecifico();
+    const ivaDesNeto=S.conds.ivaDesglose?Math.round(total/1.16):0;
+    const ivaDesIva=S.conds.ivaDesglose?total-ivaDesNeto:0;
+    // Sección T2 servicios opcionales (NO suman al total)
+    const t2activeItems=[...S.t2extras.filter(x=>x.activo),...S.t2custom];
+    const t2optBlock=(S.tipo==='T2'&&t2activeItems.length>0)?`<div style="margin-top:12px;padding:10px 12px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:7px;font-size:11px">
+      <div style="color:#555;margin-bottom:7px">Se cotiza únicamente el suministro de los equipos. El cliente puede instalar con su técnico de confianza, o bien solicitar el servicio con Climas Inverter Monterrey:</div>
+      ${t2activeItems.map(ex=>`<div style="display:flex;justify-content:space-between;padding:3px 0;color:#444"><span>· ${esc(ex.l||ex.nombre||'—')}${(ex.qty||1)>1?` × ${ex.qty||1}`:''}</span><strong>${fmt((ex.p||0)*(ex.qty||1))}</strong></div>`).join('')}
+      <div style="margin-top:7px;border-top:1px solid #e0e0e0;padding-top:6px;color:#333;font-size:10px"><strong>Al adquirir equipo + instalación con Climas Inverter Monterrey</strong>, extendemos sin costo +6 meses de garantía en tarjetas electrónicas.</div>
+      <div style="margin-top:5px;font-size:10px;color:#777">Precio de equipos es neto (IVA incluido). En caso de requerir factura de mano de obra y materiales, dichos conceptos son + IVA.</div>
+    </div>`:'';
+    eqBlock=`<div style="margin-bottom:12px">
+      ${S.eqs.length>0?`<div style="font-size:10px;font-weight:700;color:${N};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Equipos</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:${N};color:#fff"><th style="padding:5px 7px;text-align:left;font-weight:600">Marca / Modelo</th><th style="padding:5px 7px;text-align:center">SEER</th><th style="padding:5px 7px;text-align:center">Cant.</th><th style="padding:5px 7px;text-align:right">P. Unit.</th><th style="padding:5px 7px;text-align:right">Total</th></tr></thead>
+        <tbody>${S.eqs.map((x,i)=>{const p=eqPrice(x,S.foraneo);return`<tr style="background:${i%2?'#f9f9f9':'#fff'};border-bottom:1px solid #f0f0f0">
+          <td style="padding:5px 7px">${x.zona?`<div style="font-size:10px;color:#888">${esc(x.zona)}</div>`:''}<strong>${esc(x.m)}</strong>${x.mod&&x.mod!==x.m?` <span style="color:#aaa;font-size:10px">${x.mod}</span>`:''}${x.desc?`<div style="font-size:10px;color:#555;margin-top:2px">${esc(x.desc)}</div>`:''}${x.nota?`<div style="font-size:10px;color:#888;font-style:italic">${esc(x.nota)}</div>`:''}<div style="margin-top:2px"><span class="seer-badge">${x.seer} SEER</span> ${x.wifi?'<span class="wifi-badge">WiFi</span>':''}</div></td>
+          <td style="padding:5px 7px;text-align:center">${x.seer}</td><td style="padding:5px 7px;text-align:center">${x.qty}</td><td style="padding:5px 7px;text-align:right">${fmt(p)}</td><td style="padding:5px 7px;text-align:right;font-weight:700">${fmt(p*x.qty)}</td></tr>`;}).join('')}</tbody>
+      </table>`:''}
+    </div>
+    ${S.insts.map(i=>{const pFinal=i.pFinal??i.p;const qty=i.qty??1;return`<div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 7px;background:#f5f7fa;border-radius:5px;margin-bottom:3px"><span>${i.l}${qty>1?` × ${qty}`:''}</span><strong>${pFinal>0?fmt(pFinal*qty):'Por proyecto'}</strong></div>`;}).join('')}
+    ${S.svcs.map(s=>{const pFinal=s.pFinal??s.p;const qty=s.qty??1;return`<div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 7px;background:#f5f7fa;border-radius:5px;margin-bottom:3px"><span>${s.l}${qty>1?` × ${qty}`:''}</span><strong>${fmt(pFinal*qty)}</strong></div>`;}).join('')}
+    ${S.conds.notas?`<div style="padding:7px 9px;background:#fff9e6;border-radius:5px;font-size:11px;color:#555;margin-top:6px"><strong>Alcance adicional: </strong>${esc(S.conds.notas)}</div>`:''}
+    <div style="margin-top:12px;border-top:2px solid #e0e0e0;padding-top:10px;display:flex;justify-content:flex-end">
+      <div style="min-width:210px">
+        ${eqT>0&&labor>0?`<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#666"><span>Subtotal equipos</span><span>${fmt(eqT)}</span></div>`:''}
+        ${labor>0?`<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#666"><span>Instalación y servicios</span><span>${fmt(labor)}</span></div>`:''}
+        ${S.conds.ivaLabor?`<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#666"><span>IVA mano de obra (16%)</span><span>${fmt(ivaL)}</span></div>`:''}
+        ${desc>0?`<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#c00"><span>Descuento</span><span>−${fmt(desc)}</span></div>`:''}
+        ${S.conds.ivaDesglose?`
+          <div style="border-top:1px dashed #bbb;margin:6px 0;padding-top:6px">
+            <div style="font-size:10px;color:#888;margin-bottom:3px">Desglose IVA (para factura):</div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#666"><span>Subtotal sin IVA</span><span>${fmt(ivaDesNeto)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#666"><span>IVA (16%)</span><span>${fmt(ivaDesIva)}</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px;color:${N};padding:6px 0;border-top:2px solid ${N};margin-top:2px"><span>TOTAL</span><span>${fmt(total)}</span></div>`
+        :`<div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px;color:${N};padding:6px 0;border-top:2px solid ${N};margin-top:4px"><span>TOTAL</span><span>${fmt(total)}</span></div>
+        <div style="font-size:9px;color:#aaa;text-align:right">Precios incluyen IVA</div>`}
+        ${S.anticipo.activo?`<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#555;margin-top:4px"><span>Anticipo recibido</span><span>−${fmt(S.anticipo.monto)}</span></div><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:${N};padding:3px 0;border-top:1px solid #ddd;margin-top:2px"><span>Saldo pendiente</span><span>${fmt(Math.max(0,total-S.anticipo.monto))}</span></div>`:''}
+      </div>
+    </div>`;
+  }
+
+  // T2 servicios opcionales — siempre se muestra si hay items activos
+  const t2activeItemsGlobal=[...S.t2extras.filter(x=>x.activo),...S.t2custom.filter(x=>x.nombre)];
+  const t2optGlobal=(S.tipo==='T2'&&t2activeItemsGlobal.length>0)?`<div style="margin-top:12px;padding:10px 12px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:7px;font-size:11px">
+    <div style="color:#555;margin-bottom:7px">Se cotiza únicamente el suministro de los equipos. El cliente puede instalar con su técnico de confianza, o bien solicitar el servicio con <strong>Climas Inverter Monterrey</strong>:</div>
+    ${t2activeItemsGlobal.map(ex=>`<div style="display:flex;justify-content:space-between;padding:3px 0;color:#444"><span>· ${esc(ex.l||ex.nombre||'—')}${(ex.qty||1)>1?` × ${ex.qty||1}`:''}</span><strong>${fmt((ex.p||0)*(ex.qty||1))}</strong></div>`).join('')}
+    <div style="margin-top:7px;border-top:1px solid #e0e0e0;padding-top:6px;color:#333;font-size:10px">· <strong>Al adquirir equipo + instalación con nosotros</strong>, extendemos sin costo +6 meses de garantía en tarjetas electrónicas.</div>
+    <div style="margin-top:3px;font-size:10px;color:#777">· Precio de equipos es neto (IVA incluido). En caso de requerir factura de mano de obra y materiales, dichos conceptos son + IVA.</div>
+  </div>`:'';
+  if(t2optGlobal) eqBlock=(eqBlock||'')+t2optGlobal;
+
+  // Formas de pago text
+  const pagosArr=[];
+  if(S.conds.pagos.transferencia) pagosArr.push('Transferencia electrónica o efectivo (preferente)');
+  if(S.conds.pagos.tarjeta) pagosArr.push('Tarjeta bancaria en una sola exhibición (+1.9% comisión)');
+  if(S.conds.pagos.meses) pagosArr.push('Meses diferidos con tarjeta de crédito (cargo según plazo, consultar disponibilidad)');
+  if(S.conds.pagos.otro&&S.conds.notas) pagosArr.push(S.conds.notas);
+
+  // Entrega
+  const modLabels={domicilio:'a domicilio del cliente',sucursal:'en sucursal / almacén del cliente',plataforma:'sobre plataforma (flete externo)'};
+  const entregaLine=S.foraneo?`<div>· <strong>Envío foráneo:</strong> ${S.conds.entregaInfo?`Entrega ${modLabels[S.conds.entregaModalidad]||''} en ${esc(S.conds.entregaInfo)}`:'Destino por confirmar'} (precios incluyen flete)</div>`:`<div>· <strong>Entrega:</strong> Sin costo en MTY y AMM. El cliente puede recoger en Ave. Lerdo de Tejada 400A, San Nicolás de los Garza.</div>`;
+
+  // Garantías
+  const allEqs=S.modo==='opciones'?S.zonas.flatMap(z=>z.opts.filter(Boolean)):S.eqs;
+  const uniqueMarcas=[...new Set(allEqs.map(x=>x.m))];
+
+  const garBlock=S.conds.gar&&uniqueMarcas.length>0?`<div style="margin-top:12px;padding:10px 12px;background:${L};border-radius:7px;font-size:11px">
+    <div style="font-weight:700;color:${N};margin-bottom:5px">Garantías incluidas</div>
+    ${uniqueMarcas.map(m=>`<div style="color:#444;margin-bottom:3px">· <strong>${esc(m)}</strong>: ${garFor(m)}</div>`).join('')}
+    <div style="margin-top:6px;border-top:1px solid ${G}44;padding-top:5px">
+      <div style="color:#555">· <strong>+6 meses adicionales</strong> en tarjetas electrónicas al contratar equipo + instalación con Climas Inverter Monterrey (sin costo adicional).</div>
+      <div style="color:#555;margin-top:2px">· Si el equipo se entrega sin instalación, aplica únicamente la garantía de la marca.</div>
+      <div style="color:#555;margin-top:2px">· <strong>6 meses de garantía</strong> en los trabajos de instalación realizados.</div>
+    </div>
+  </div>`:'';
+
+  const difBlock=S.conds.dif&&(S.tipo==='T1'||S.tipo==='T4')?`<div style="margin-top:10px;padding:9px 12px;background:#f5f7fa;border-radius:7px;font-size:11px">
+    <div style="font-weight:700;color:${N};margin-bottom:4px">Proceso de instalación profesional</div>
+    <div style="color:#555">· Prueba de hermeticidad certificada en líneas de refrigerante</div>
+    <div style="color:#555">· Vacío profundo para eliminar humedad y garantizar máxima eficiencia</div>
+    <div style="color:#555">· Montaje de condensador con base de neoprene antivibración (incluido sin costo adicional)</div>
+    ${S.esDepto||S.conds.cobre?`<div style="color:#555;margin-top:4px">· <strong>Instalación con tubería de cobre:</strong> garantiza mayor vida útil, mejor transferencia térmica y protege tu inversión a largo plazo.</div>`:''}
+  </div>`:'';
+
+  const condBlock=`<div style="margin-top:10px;padding:9px 12px;background:#f5f7fa;border-radius:7px;font-size:11px">
+    <div style="font-weight:700;color:${N};margin-bottom:5px">Condiciones</div>
+    <div>· <strong>Pago:</strong> ${esc(S.conds.pago)}</div>
+    ${pagosArr.length>0?`<div>· <strong>Forma de pago:</strong> ${pagosArr.join(' · ')}</div>`:''}
+    <div>· <strong>Vigencia:</strong> ${S.conds.vig}</div>
+    ${entregaLine}
+    ${S.conds.deslinde?`<div style="margin-top:5px;color:#555">· Climas Inverter Monterrey no se hace responsable de modificaciones estructurales (nichos, drenajes, ductos) que sean responsabilidad de terceros.</div>`:''}
+  </div>`;
+
+  const cta=`<div style="margin-top:10px;padding:9px 12px;background:${N};border-radius:7px;font-size:11px;color:#fff"><strong style="color:${G}">Siguiente paso: </strong>Confirme disponibilidad o cualquier duda al WhatsApp <strong>${q.tel}</strong> o respondiendo este correo autorizando la propuesta.</div>`;
+
+  const cierre=`<div style="margin-top:12px;font-size:11px;color:#555;border-top:1px solid #eee;padding-top:10px">
+    <div>Atentamente,</div>
+    <div style="font-weight:700;color:${N};margin-top:2px">${q.nombre}</div>
+    <div>Climas Inverter Monterrey · Centro de Servicio Autorizado Carrier</div>
+    <div style="color:#999;font-size:10px;margin-top:3px">${q.email} · climasinvertermonterrey.com · ${q.tel}</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap">
+      <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#555">${FB} climasinvertermonterrey</span>
+      <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#555">${IG} @climasinvertermonterrey</span>
+    </div>
+    <div style="margin-top:6px;font-style:italic;color:#888;font-size:10px">"Te guiamos de manera profesional en el proceso de elección e instalación del equipo ideal, para que disfrutes la temperatura perfecta en tu espacio."</div>
+  </div>`;
+
+  const fotosBlock=S.fotos.length>0?`<div style="margin-top:12px"><div style="font-size:10px;font-weight:700;color:${N};text-transform:uppercase;margin-bottom:6px">Evidencia fotográfica</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">${S.fotos.map(f=>`<img src="${f.url}" style="width:100%;height:70px;object-fit:cover;border-radius:5px;border:1px solid #e0e0e0">`).join('')}</div></div>`:'';
+
+  // WhatsApp button
+  const waBtn=`<button id="btn-wa" class="btn-g" style="width:100%;margin-bottom:8px;font-size:14px">📲 Copiar mensaje para WhatsApp</button>`;
+
+  return `<div id="print-area">
+    <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:18px;margin-bottom:12px" class="print-doc">
+      ${hdr}${cli}${eqBlock}${cta}${garBlock}${difBlock}${condBlock}${cierre}${fotosBlock}
+    </div>
+  </div>
+  <div class="no-print">
+    ${waBtn}
+    <button onclick="window.print()" class="btn-n" style="width:100%;margin-bottom:8px;font-size:14px">🖨️ Imprimir / Guardar PDF</button>
+    <div style="padding:10px 14px;background:#fffdf2;border:1px solid #f0d060;border-radius:8px;font-size:12px;color:#7a6000"><strong>Flujo acordado:</strong> Revisa aquí antes de enviar. Cuando esté lista escribe <strong>"listo para enviar"</strong> en el chat con Claude para generar el Word/PDF. O usa el botón de imprimir — sin gastar tokens.</div>
+  </div>`;
+}
+
+// ─── PICKER MODAL ────────────────────────────────────────
+function pickerModal(){
+  if(S.modal!=='picker') return '';
+  const favArr=[...S.favs];
+  const favItems=S.catalog.filter(x=>favArr.includes(x.id));
+  const allItems=S.catalog.filter(x=>!favArr.includes(x.id));
+  const allSorted=[...favItems,...allItems];
+  const brands=[...new Set(allSorted.map(x=>x.m))];
+  const fav_first_brands=[...new Set(favItems.map(x=>x.m))];
+  const other_brands=brands.filter(b=>!fav_first_brands.includes(b));
+  const ordered_brands=[...fav_first_brands,...other_brands];
+
+  return `<div class="modal-bg">
+    <div class="modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="font-size:15px;font-weight:700;color:${N}">Seleccionar equipo</h3>
+        <button id="close-modal" style="background:none;border:none;font-size:22px;cursor:pointer;color:#666">✕</button>
+      </div>
+      <input id="picker-search" type="text" placeholder="Buscar por marca, tonelaje, voltaje, SEER..." value="${esc(S.pickerSearch)}" style="margin-bottom:10px">
+      <div style="font-size:11px;color:#888;margin-bottom:8px">⭐ = Favorito. Toca la estrella para marcar/desmarcar. Los favoritos aparecen primero siempre.</div>
+      <div id="picker-list" style="max-height:55vh;overflow-y:auto;border:1px solid #e0e0e0;border-radius:8px">
+        ${ordered_brands.map(m=>{
+          const items=allSorted.filter(x=>x.m===m);
+          return `<div class="brand-group" data-brand="${m.toLowerCase()}">
+            <div style="background:#f5f7fa;padding:6px 10px;font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;gap:6px">${fav_first_brands.includes(m)?'⭐ ':''} ${m}</div>
+            ${items.map(x=>{
+              const p=eqPrice(x,S.foraneo);
+              const isFav=S.favs.has(x.id);
+              return `<div class="catalog-item" data-id="${x.id}" data-brand="${x.m.toLowerCase()}" data-text="${(x.m+' '+x.mod+' '+x.sf+' '+x.v+' '+x.t+' '+x.seer+' '+x.tipo).toLowerCase()}">
+                <button class="fav-btn ${isFav?'active':''}" data-fid="${x.id}" title="Marcar como favorito">⭐</button>
+                <div style="flex:1">
+                  <span style="font-weight:600;color:${N}">${x.t}T · ${x.v} · ${x.sf==='FC'?'Frío-Calor':'Solo Frío'}</span>
+                  <span style="color:#888;font-size:11px;margin-left:6px">${x.mod}</span>
+                  <div style="margin-top:2px"><span class="seer-badge">${x.seer} SEER</span> ${x.wifi?'<span class="wifi-badge">WiFi</span>':''} ${x.tipo==='inv'?'<span style="background:#e8f5e9;color:#2e7d32;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600">Inverter</span>':'<span style="background:#f5f5f5;color:#666;border-radius:4px;padding:1px 5px;font-size:10px">Conv.</span>'}</div>
+                </div>
+                <div class="pick-item" data-id="${x.id}" style="font-weight:700;color:${G};min-width:68px;text-align:right;cursor:pointer">${fmt(p)}</div>
+              </div>`;
+            }).join('')}
+          </div>`;
+        }).join('')}
+      </div>
+      <button id="open-custom" class="btn-ghost" style="width:100%;margin-top:10px;font-size:13px">+ Ingresar equipo personalizado (central, cassette, VRF...)</button>
+    </div>
+  </div>`;
+}
+
+// ─── CUSTOM MODAL ─────────────────────────────────────────
+function customModal(){
+  if(S.modal!=='custom') return '';
+  const e=S.editingEqDetails!=null?S.eqs[S.editingEqDetails]:null;
+  const title=e?'Editar equipo':'Equipo personalizado';
+  return `<div class="modal-bg"><div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="font-size:15px;font-weight:700;color:${N}">${title}</h3>
+      <button id="close-modal" style="background:none;border:none;font-size:22px;cursor:pointer;color:#666">✕</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px">
+      <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Marca *</label><input id="c_marca" type="text" placeholder="Daikin, Hitachi, Midea..." value="${esc(e?.m||'')}"></div>
+      <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Modelo</label><input id="c_modelo" type="text" placeholder="RXYQ8T..." value="${esc(e?.mod||'')}"></div>
+      <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Tipo</label><select id="c_tipo">${['Mini Split','Cassette','Fan Coil','Central','VRF / VRV','Piso-Techo','Ducto','Otro'].map(o=>`<option ${(e?.mod||''===o)?'selected':''}>${o}</option>`).join('')}</select></div>
+      <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Modo</label><select id="c_sf"><option value="FC" ${(!e||e.sf==='FC')?'selected':''}>Frío-Calor</option><option value="SF" ${e?.sf==='SF'?'selected':''}>Solo Frío</option></select></div>
+      <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Voltaje</label><select id="c_v"><option ${(!e||e.v==='110V')?'selected':''}>110V</option><option ${e?.v==='220V'?'selected':''}>220V</option><option ${e?.v==='220V Monofásico'?'selected':''}>220V Monofásico</option><option ${e?.v==='440V Trifásico'?'selected':''}>440V Trifásico</option></select></div>
+      <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Toneladas *</label><input id="c_t" type="number" step="0.5" min="0.5" placeholder="1.5" value="${e?.t||''}"></div>
+      <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">SEER</label><input id="c_seer" type="number" step="0.1" min="10" placeholder="19" value="${e?.seer||''}"></div>
+      <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Precio local *</label><input id="c_pl" type="number" min="0" placeholder="25000" value="${e?.pL||''}"></div>
+      <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Precio foráneo</label><input id="c_pe" type="number" min="0" placeholder="(opcional)" value="${e?.pE||''}"></div>
+      <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Calefacción</label><select id="c_cal"><option>N/A</option><option>Heat Pump</option><option>Eléctrica</option><option>Gas</option></select></div>
+      <label class="chk-row" style="flex:1 1 100%"><input type="checkbox" id="c_wifi" ${e?.wifi?'checked':''}><span>Tiene WiFi integrado</span></label>
+      <div style="flex:1 1 100%;display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Descripción / notas del equipo</label><input id="c_desc" type="text" placeholder="Central paquete 10T, incluye módulo de expansión..." value="${esc(e?.desc||'')}"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button id="save-custom" class="btn-g" style="flex:1">${e?'Guardar cambios':'Agregar equipo'}</button>
+      <button id="close-modal" class="btn-ghost">Cancelar</button>
+    </div>
+  </div></div>`;
+}
+
+// ─── EDITOR MODAL ─────────────────────────────────────────
+function editorModal(){
+  if(S.modal!=='editor') return '';
+  return `<div class="modal-bg"><div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="font-size:15px;font-weight:700;color:${N}">⚙️ Editor de Precios</h3>
+      <button id="close-modal" style="background:none;border:none;font-size:22px;cursor:pointer;color:#666">✕</button>
+    </div>
+    <p style="font-size:12px;color:#666;margin-bottom:10px">Edita precios locales y foráneos. Los cambios se guardan en este navegador.</p>
+    <input id="editor-search" type="text" placeholder="Filtrar por marca..." style="margin-bottom:10px">
+    <div style="max-height:50vh;overflow-y:auto;border:1px solid #e0e0e0;border-radius:7px">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:${N};color:#fff"><th style="padding:5px 7px;text-align:left">Marca</th><th style="padding:5px 7px;text-align:center">T</th><th style="padding:5px 7px;text-align:center">V</th><th style="padding:5px 7px;text-align:right">Local</th><th style="padding:5px 7px;text-align:right">Foráneo</th></tr></thead>
+        <tbody id="editor-tbody">
+          ${S.catalog.map((x,i)=>`<tr style="background:${i%2?'#f9f9f9':'#fff'};border-bottom:1px solid #f0f0f0" data-row="${x.m.toLowerCase()}">
+            <td style="padding:4px 7px"><strong>${esc(x.m)}</strong></td>
+            <td style="padding:4px 7px;text-align:center">${x.t}</td>
+            <td style="padding:4px 7px;text-align:center">${x.v}</td>
+            <td style="padding:4px 7px;text-align:right"><input type="number" class="price-l" data-id="${x.id}" value="${x.pL}" style="width:80px;padding:3px 5px;font-size:11px;text-align:right;border:1px solid #d0d5dd;border-radius:4px"></td>
+            <td style="padding:4px 7px;text-align:right"><input type="number" class="price-e" data-id="${x.id}" value="${x.pE||''}" placeholder="—" style="width:80px;padding:3px 5px;font-size:11px;text-align:right;border:1px solid #d0d5dd;border-radius:4px"></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="save-prices" class="btn-g" style="flex:1">💾 Guardar precios</button>
+      <button id="export-csv" class="btn-ghost" style="font-size:12px">📥 Exportar CSV</button>
+      <button id="reset-prices" class="btn-ghost" style="font-size:12px">↩ Restaurar</button>
+    </div>
+  </div></div>`;
+}
+
+// ═══════════ WHATSAPP MESSAGE ═══════════
+function buildWAMessage(){
+  const nombre=S.cli.nombre?S.cli.nombre.split(' ')[0]:'';
+  const q=QUOTERS[S.quoter];
+  let lines=[];
+  if(nombre) lines.push(`${nombre}, buen día ☀️`);
+  lines.push('Te comparto opciones de equipos para que puedas considerar cuál se adapta mejor a tu necesidad.');
+  lines.push('');
+
+  if(S.modo==='opciones'&&S.zonas.length>0){
+    S.zonas.forEach(z=>{
+      const nm=z.nombre==='Otro (especificar)'?z.libre:z.nombre;
+      if(nm) lines.push(`*${nm}:*`);
+      [0,1,2].forEach(oi=>{
+        const eq=z.opts[oi];
+        if(eq){
+          const p=eqPrice(eq,S.foraneo);
+          const prem=isGarPrem(eq.m);
+          lines.push(`${OPT_NAMES[oi]}${oi===1?' ⭐':''}: *${eq.m}* ${eq.t}T ${eq.v} — ${fmt(p)} (${eq.seer} SEER${eq.wifi?', WiFi':''})`);
+        }
+      });
+    });
+    lines.push('');
+    const {tA,tB,tC}=totOpciones();
+    if(S.insts.length>0||S.svcs.length>0){
+      const labor=S.insts.reduce((a,x)=>a+x.p,0)+S.svcs.reduce((a,x)=>a+x.p,0);
+      lines.push(`Instalación: ${fmt(labor)}`);
+    }
+    lines.push(`Total estimado — Confiable: ${fmt(tA)} · Recomendada: ${fmt(tB)} · Elite: ${fmt(tC)}`);
+  } else if(S.eqs.length>0){
+    S.eqs.forEach(x=>{
+      const p=eqPrice(x,S.foraneo);
+      lines.push(`*${x.m}* ${x.t}T ${x.v} — ${fmt(p)} (${x.seer} SEER${x.wifi?', WiFi':''})`);
+    });
+    if(S.insts.length>0){lines.push('');S.insts.forEach(i=>{if(i.p>0)lines.push(`${i.l}: ${fmt(i.p)}`);}); }
+    if(S.svcs.length>0){S.svcs.forEach(s=>lines.push(`${s.l}: ${fmt(s.p)}`));}
+    const {total}=totEspecifico();
+    lines.push(`*Total: ${fmt(total)}*`);
+  }
+
+  // Garantías
+  const allEqs2=S.modo==='opciones'?S.zonas.flatMap(z=>z.opts.filter(Boolean)):S.eqs;
+  const hasPrem=allEqs2.some(x=>isGarPrem(x.m));
+  const hasStd=allEqs2.some(x=>!isGarPrem(x.m));
+
+  lines.push('');
+  if(hasPrem) lines.push('Los equipos Carrier / Trane / York cuentan con garantía de 5 años en compresor, 1 año en partes incluyendo tarjetas electrónicas y control remoto.');
+  if(hasStd) lines.push('Los demás equipos tienen garantía de 5 años en compresor, 1 año en partes y 3 meses en tarjetas electrónicas y control remoto.');
+  lines.push('*Al adquirir el equipo e instalación con nosotros, extendemos sin costo 6 meses adicionales de garantía en tarjetas electrónicas.*');
+  if(!S.foraneo) lines.push('Si se entrega solo el equipo, aplica únicamente la garantía de la marca. En cualquier caso, seguimos apoyando en temas de garantía.');
+
+  // Entrega
+  lines.push('');
+  if(!S.foraneo){
+    lines.push('Entrega sin costo en Monterrey y Área Metropolitana. También puede recoger en nuestras oficinas: Ave. Lerdo de Tejada 400A, San Nicolás de los Garza.');
+  } else {
+    lines.push(`Envío foráneo a ${S.conds.entregaInfo||'tu ciudad'} incluido en el precio.`);
+  }
+
+  // Instalación básica nota
+  if(S.insts.some(i=>i.id==='i1'||i.id==='i2')){
+    lines.push('');
+    lines.push('*Instalación básica incluye:* kit de fábrica estándar (3–4 metros de tubería y cable de comunicación). Si requiere mayor distancia o material eléctrico adicional, se cotiza aparte al momento de la visita.');
+    lines.push('Si ya cuentan con preparación eléctrica (cableado y pastilla independiente desde el centro de carga hasta donde va el condensador), la instalación aplica sin costo adicional de material eléctrico.');
+  }
+
+  // Recomendación
+  if(allEqs2.length>0){
+    const recs=allEqs2.filter(x=>x.seer>=19);
+    if(recs.length>0){
+      lines.push('');
+      lines.push(`En cuanto a eficiencia, le recomendaría${recs.length===1?' el '+recs[0].m:' los de mayor SEER'} considerando la relación precio-eficiencia y la garantía que ofrecen.`);
+    }
+  }
+
+  lines.push('');
+  lines.push(`Vigencia: ${S.conds.vig}. Quedo al pendiente de cualquier duda.`);
+  lines.push(`¡Gracias!`);
+  lines.push(`— ${q.nombre.split(' ').slice(0,2).join(' ')}, Climas Inverter Monterrey · ${q.tel}`);
+
+  return lines.join('\n');
+}
+
+// ═══════════ RENDER ═══════════
+function render(){
+  const steps_fn=[s0,s1,s2,s3,s4,s5,s6];
+  const content=steps_fn[S.step]();
+  const {total:tE}=S.modo==='especifico'?totEspecifico():{total:0};
+  const {tB}=totOpciones();
+  const showTotal=tE>0||(S.modo==='opciones'&&tB>0);
+
+  document.getElementById('app').innerHTML=`
+  <div style="max-width:720px;margin:0 auto;background:#f4f6f9;min-height:100vh;padding-bottom:80px">
+    <div style="background:${N};padding:11px 14px;display:flex;align-items:center;justify-content:space-between" class="no-print">
+      <div style="display:flex;align-items:center;gap:10px">
+        ${logo(44)}
+        <div style="border-left:1px solid rgba(255,255,255,.2);padding-left:10px">
+          <div style="color:#fff;font-weight:700;font-size:13px">Generador de Cotizaciones</div>
+          <div style="color:${G};font-size:10px">Climas Inverter Monterrey · Autorizado Carrier</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="btn-editor" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:5px 9px;font-size:13px" title="Editor de precios">⚙️</button>
+        <div style="text-align:right"><div style="color:${G};font-size:9px;font-weight:600;letter-spacing:.5px">FOLIO</div><div style="color:#fff;font-size:12px;font-weight:700">${esc(S.folio)}</div></div>
+      </div>
+    </div>
+    ${stepper()}
+    <div style="padding:14px 14px 0">${content}</div>
+    <div class="no-print" style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e0e0e0;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;z-index:100;max-width:720px;margin:0 auto">
+      <button id="btn-prev" ${S.step===0?'disabled':''} class="btn-ghost" style="color:${S.step===0?'#ccc':N};border-color:${S.step===0?'#eee':'#ccc'}">← Anterior</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:#999">${S.step+1} / ${STEPS.length}</span>
+        ${showTotal?`<div style="background:${N};color:#fff;border-radius:14px;padding:3px 10px;font-size:12px;font-weight:700">${fmt(S.modo==='opciones'?tB:tE)}</div>`:''}
+      </div>
+      ${S.step<STEPS.length-1
+        ?`<button id="btn-next" class="btn-g">Siguiente →</button>`
+        :`<button id="btn-send" class="btn-n" onclick="alert('✅ Cotización lista.\\n\\nEscribe \\'listo para enviar\\' en el chat con Claude para generar el Word/PDF.\\n\\nO usa el botón de imprimir para PDF directo — sin gastar tokens.')">Listo para enviar ↗</button>`
+      }
+    </div>
+  </div>
+  ${pickerModal()}${customModal()}${editorModal()}`;
+  attachEvents();
+}
+
+// ═══════════ EVENTS ═══════════
+function attachEvents(){
+  const q=s=>document.querySelector(s);
+  const qa=s=>document.querySelectorAll(s);
+  const gv=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+
+  q('#btn-prev')?.addEventListener('click',()=>goStep(Math.max(0,S.step-1)));
+  q('#btn-next')?.addEventListener('click',()=>{
+    syncForm();
+    if(S.step===1&&!S.cli.nombre.trim()){alert('Por favor ingresa el nombre del cliente.');return;}
+    goStep(Math.min(STEPS.length-1,S.step+1));
+  });
+
+  // Step 0
+  qa('.tipo-btn').forEach(b=>b.addEventListener('click',()=>{
+    syncForm();
+    const nt=b.dataset.id;
+    set({tipo:nt,...(nt==='T2'||nt==='T3'?{modo:'especifico'}:{})});
+  }));
+  qa('.modo-btn').forEach(b=>b.addEventListener('click',()=>{syncForm();set({modo:b.dataset.m});}));
+  qa('.quoter-btn').forEach(b=>b.addEventListener('click',()=>{syncForm();set({quoter:b.dataset.q});}));
+  qa('.foraneo-btn').forEach(b=>b.addEventListener('click',()=>{syncForm();set({foraneo:b.dataset.f==='1'});}));
+  // Modalidad foráneo puede estar en step 0 o step 5
+  qa('.mod-btn').forEach(r=>r.addEventListener('change',()=>{syncForm();set({conds:{...S.conds,entregaModalidad:r.value}});}));
+  q('#chk_zonas')?.addEventListener('change',e=>set({usaZonas:e.target.checked}));
+  q('#chk_depto')?.addEventListener('change',e=>set({esDepto:e.target.checked}));
+
+  // Step 2 — opciones
+  q('#add-zona')?.addEventListener('click',()=>{
+    const z={id:uid(),nombre:'Sala-comedor',libre:'',nota:'',opts:[null,null,null]};
+    set({zonas:[...S.zonas,z]});
+  });
+  qa('.rm-zona').forEach(b=>b.addEventListener('click',()=>set({zonas:S.zonas.filter(z=>z.id!==b.dataset.zid)})));
+  qa('.z-nombre').forEach(sel=>sel.addEventListener('change',e=>{const zid=sel.dataset.zid;set({zonas:S.zonas.map(z=>z.id===zid?{...z,nombre:e.target.value}:z)});}));
+  qa('.z-libre').forEach(inp=>inp.addEventListener('change',e=>{const zid=inp.dataset.zid;set({zonas:S.zonas.map(z=>z.id===zid?{...z,libre:e.target.value}:z)});}));
+  qa('.z-nota').forEach(inp=>inp.addEventListener('change',e=>{const zid=inp.dataset.zid;set({zonas:S.zonas.map(z=>z.id===zid?{...z,nota:e.target.value}:z)});}));
+  qa('.rm-opt').forEach(b=>b.addEventListener('click',()=>{
+    const{zid,oi}=b.dataset;
+    set({zonas:S.zonas.map(z=>{if(z.id!==zid)return z;const opts=[...z.opts];opts[parseInt(oi)]=null;return{...z,opts};})});
+  }));
+  qa('.pick-btn').forEach(btn=>btn.addEventListener('click',()=>{
+    const{zid,oi}=btn.dataset;
+    set({modal:'picker',pickerTarget:{type:'zona',zid,oi:parseInt(oi)},pickerSearch:''});
+  }));
+
+  // Step 2 — single
+  q('#open-picker-single')?.addEventListener('click',()=>set({modal:'picker',pickerTarget:{type:'single'},pickerSearch:''}));
+  qa('.rm-eq').forEach(b=>b.addEventListener('click',()=>{const i=parseInt(b.dataset.i);set({eqs:S.eqs.filter((_,j)=>j!==i),editingPriceIdx:null});}));
+  qa('.eq-qty').forEach(inp=>inp.addEventListener('change',e=>{const i=parseInt(inp.dataset.i);set({eqs:S.eqs.map((x,j)=>j===i?{...x,qty:Math.max(1,parseInt(e.target.value)||1)}:x)});}));
+  qa('.eq-zona').forEach(sel=>sel.addEventListener('change',e=>{const i=parseInt(sel.dataset.i);set({eqs:S.eqs.map((x,j)=>j===i?{...x,zona:e.target.value}:x)});}));
+  qa('.eq-nota').forEach(inp=>inp.addEventListener('change',e=>{const i=parseInt(inp.dataset.i);set({eqs:S.eqs.map((x,j)=>j===i?{...x,nota:e.target.value}:x)});}));
+
+  // Precio editable por cotización
+  qa('.eq-price-btn').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();syncForm();set({editingPriceIdx:parseInt(btn.dataset.i)});}));
+  qa('.eq-price-input').forEach(inp=>{
+    inp.addEventListener('blur',e=>{const i=parseInt(inp.dataset.i);const np=parseFloat(e.target.value);set({eqs:S.eqs.map((x,j)=>j===i?{...x,precioOverride:isNaN(np)||np<=0?null:np}:x),editingPriceIdx:null});});
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}if(e.key==='Escape')set({editingPriceIdx:null});});
+    setTimeout(()=>inp.focus(),30);
+  });
+  // Editar datos del equipo (abre modal pre-llenado)
+  qa('.eq-edit-btn').forEach(btn=>btn.addEventListener('click',e=>{
+    e.stopPropagation();syncForm();
+    set({editingEqDetails:parseInt(btn.dataset.i),modal:'custom',pickerTarget:null});
+  }));
+
+  // Step 3 — inst/svc cards toggle
+  qa('.inst-card').forEach(c=>c.addEventListener('click',()=>{
+    const inst=INST_OPTS.find(x=>x.id===c.dataset.id);if(!inst)return;
+    syncForm();
+    set({insts:S.insts.find(x=>x.id===inst.id)?S.insts.filter(x=>x.id!==inst.id):[...S.insts,{...inst,qty:1,pFinal:null}]});
+  }));
+  qa('.svc-card').forEach(c=>c.addEventListener('click',()=>{
+    const svc=SVC_OPTS.find(x=>x.id===c.dataset.id);if(!svc)return;
+    syncForm();
+    set({svcs:S.svcs.find(x=>x.id===svc.id)?S.svcs.filter(x=>x.id!==svc.id):[...S.svcs,{...svc,qty:1,pFinal:null}]});
+  }));
+  // inst/svc qty y precio — sin re-render para no perder foco
+  qa('.inst-qty,.inst-pfinal,.svc-qty,.svc-pfinal').forEach(inp=>{
+    inp.addEventListener('click',e=>e.stopPropagation());
+    inp.addEventListener('change',e=>{
+      const id=inp.dataset.id;const val=parseFloat(e.target.value);
+      if(inp.classList.contains('inst-qty')) S.insts=S.insts.map(x=>x.id===id?{...x,qty:Math.max(1,parseInt(e.target.value)||1)}:x);
+      else if(inp.classList.contains('inst-pfinal')) S.insts=S.insts.map(x=>x.id===id?{...x,pFinal:isNaN(val)?null:val}:x);
+      else if(inp.classList.contains('svc-qty')) S.svcs=S.svcs.map(x=>x.id===id?{...x,qty:Math.max(1,parseInt(e.target.value)||1)}:x);
+      else if(inp.classList.contains('svc-pfinal')) S.svcs=S.svcs.map(x=>x.id===id?{...x,pFinal:isNaN(val)?null:val}:x);
+    });
+  });
+  // T2 extras
+  qa('.t2extra-card').forEach(c=>c.addEventListener('click',()=>{
+    const id=c.dataset.id;syncForm();
+    set({t2extras:S.t2extras.map(x=>x.id===id?{...x,activo:!x.activo}:x)});
+  }));
+  qa('.t2extra-price').forEach(inp=>{
+    inp.addEventListener('click',e=>e.stopPropagation());
+    inp.addEventListener('change',e=>{const id=inp.dataset.id;const p=parseFloat(e.target.value)||0;S.t2extras=S.t2extras.map(x=>x.id===id?{...x,p}:x);});
+  });
+  // T2 custom items
+  q('#add-t2custom')?.addEventListener('click',()=>{
+    syncForm();
+    set({t2custom:[...S.t2custom,{id:uid(),nombre:'',qty:1,p:0}]});
+  });
+  qa('.rm-t2c').forEach(btn=>btn.addEventListener('click',()=>{
+    const idx=parseInt(btn.dataset.idx);
+    syncForm();set({t2custom:S.t2custom.filter((_,i)=>i!==idx)});
+  }));
+  qa('.t2c-nombre,.t2c-qty,.t2c-precio').forEach(inp=>{
+    inp.addEventListener('change',e=>{
+      const idx=parseInt(inp.dataset.idx);const val=e.target.value;
+      if(inp.classList.contains('t2c-nombre')) S.t2custom=S.t2custom.map((x,i)=>i===idx?{...x,nombre:val}:x);
+      else if(inp.classList.contains('t2c-qty')) S.t2custom=S.t2custom.map((x,i)=>i===idx?{...x,qty:Math.max(1,parseInt(val)||1)}:x);
+      else if(inp.classList.contains('t2c-precio')) S.t2custom=S.t2custom.map((x,i)=>i===idx?{...x,p:parseFloat(val)||0}:x);
+    });
+  });
+  qa('.desc-btn').forEach(b=>b.addEventListener('click',()=>{syncForm();set({descuento:{...S.descuento,tipo:b.dataset.dt}});}));
+  q('#chk_anticipo')?.addEventListener('change',e=>set({anticipo:{...S.anticipo,activo:e.target.checked}}));
+
+  // Step 4 — syncForm() SIEMPRE antes de set() para no perder condición/vigencia
+  q('#chk_iva')?.addEventListener('change',e=>{syncForm();set({conds:{...S.conds,ivaLabor:e.target.checked}});});
+  q('#chk_iva_des')?.addEventListener('change',e=>{syncForm();set({conds:{...S.conds,ivaDesglose:e.target.checked}});});
+  q('#chk_gar')?.addEventListener('change',e=>{syncForm();set({conds:{...S.conds,gar:e.target.checked}});});
+  q('#chk_dif')?.addEventListener('change',e=>{syncForm();set({conds:{...S.conds,dif:e.target.checked}});});
+  q('#chk_cobre')?.addEventListener('change',e=>{syncForm();set({conds:{...S.conds,cobre:e.target.checked}});});
+  q('#chk_deslinde')?.addEventListener('change',e=>{syncForm();set({conds:{...S.conds,deslinde:e.target.checked}});});
+  q('#chk_p_transf')?.addEventListener('change',e=>{syncForm();set({conds:{...S.conds,pagos:{...S.conds.pagos,transferencia:e.target.checked}}});});
+  q('#chk_p_tarjeta')?.addEventListener('change',e=>{syncForm();set({conds:{...S.conds,pagos:{...S.conds.pagos,tarjeta:e.target.checked}}});});
+  q('#chk_p_meses')?.addEventListener('change',e=>{syncForm();set({conds:{...S.conds,pagos:{...S.conds.pagos,meses:e.target.checked}}});});
+  q('#chk_p_otro')?.addEventListener('change',e=>{syncForm();set({conds:{...S.conds,pagos:{...S.conds.pagos,otro:e.target.checked}}});});
+
+  // Step 5 — fotos y modalidad foráneo
+  const fi=q('#foto-input');
+  q('#foto-drop')?.addEventListener('click',()=>fi&&fi.click());
+  fi?.addEventListener('change',e=>{const files=Array.from(e.target.files).slice(0,10-S.fotos.length);let loaded=0;if(!files.length)return;files.forEach(f=>{const r=new FileReader();r.onload=x=>{S.fotos.push({name:f.name,url:x.target.result});if(++loaded===files.length)set({});};r.readAsDataURL(f);});});
+  qa('.rm-foto').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();S.fotos.splice(parseInt(b.dataset.i),1);set({});}));
+  qa('.mod-btn').forEach(r=>r.addEventListener('change',()=>{syncForm();set({conds:{...S.conds,entregaModalidad:r.value}});}));
+
+  // WA Button
+  q('#btn-wa')?.addEventListener('click',()=>{
+    const msg=buildWAMessage();
+    navigator.clipboard.writeText(msg).then(()=>alert('✅ Mensaje copiado al portapapeles.\n\nPégalo directamente en WhatsApp.')).catch(()=>{
+      const ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+      alert('✅ Mensaje copiado. Pégalo en WhatsApp.');
+    });
+  });
+
+  // PICKER — search sin re-render
+  const pickerSearch=q('#picker-search');
+  if(pickerSearch){
+    pickerSearch.addEventListener('input',e=>{
+      const v=e.target.value.toLowerCase();
+      qa('#picker-list .catalog-item').forEach(row=>{
+        const t=(row.dataset.brand||'')+' '+(row.textContent||'').toLowerCase();
+        row.style.display=t.includes(v)?'':'none';
+      });
+      qa('#picker-list .brand-group').forEach(grp=>{
+        const visible=[...grp.querySelectorAll('.catalog-item')].some(r=>r.style.display!=='none');
+        grp.style.display=visible?'':'none';
+      });
+    });
+    setTimeout(()=>pickerSearch.focus(),50);
+  }
+
+  // PICKER — favorites (no re-render)
+  qa('.fav-btn').forEach(btn=>btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const fid=btn.dataset.fid;
+    const newFavs=new Set(S.favs);
+    if(newFavs.has(fid)){newFavs.delete(fid);btn.classList.remove('active');}
+    else{newFavs.add(fid);btn.classList.add('active');}
+    S.favs=newFavs;
+    saveFavs(newFavs);
+  }));
+
+  // PICKER — select item (no re-render for search)
+  qa('.catalog-item').forEach(item=>item.addEventListener('click',()=>{
+    const eq=S.catalog.find(x=>x.id===item.dataset.id);
+    if(!eq||!S.pickerTarget)return;
+    if(S.pickerTarget.type==='zona'){
+      const{zid,oi}=S.pickerTarget;
+      set({zonas:S.zonas.map(z=>{if(z.id!==zid)return z;const opts=[...z.opts];opts[oi]={...eq};return{...z,opts};}),modal:null,pickerTarget:null});
+    } else {
+      set({eqs:[...S.eqs,{...eq,qty:1,zona:'',nota:'',uid:uid()}],modal:null,pickerTarget:null});
+    }
+  }));
+  q('#open-custom')?.addEventListener('click',()=>set({modal:'custom'}));
+
+  // CUSTOM
+  q('#save-custom')?.addEventListener('click',()=>{
+    const marca=gv('c_marca');const t=parseFloat(gv('c_t'));const pl=parseFloat(gv('c_pl'));
+    if(!marca||!t||!pl){alert('Marca, toneladas y precio local son requeridos.');return;}
+    const pe_v=parseFloat(gv('c_pe'));
+    const eq={id:'custom_'+uid(),m:marca,mod:gv('c_modelo')||gv('c_tipo'),sf:document.getElementById('c_sf')?.value||'FC',v:document.getElementById('c_v')?.value||'220V',t,seer:parseFloat(gv('c_seer'))||0,wifi:document.getElementById('c_wifi')?.checked||false,pL:pl,pE:pe_v||null,tipo:'inv',desc:gv('c_desc'),precioOverride:null};
+    if(S.editingEqDetails!=null){
+      const idx=S.editingEqDetails;const prev=S.eqs[idx];
+      set({eqs:S.eqs.map((x,i)=>i===idx?{...prev,...eq,id:prev.id,qty:prev.qty,precioOverride:prev.precioOverride}:x),modal:null,pickerTarget:null,editingEqDetails:null});
+    } else if(S.pickerTarget?.type==='zona'){
+      const{zid,oi}=S.pickerTarget;
+      set({zonas:S.zonas.map(z=>{if(z.id!==zid)return z;const opts=[...z.opts];opts[oi]=eq;return{...z,opts};}),modal:null,pickerTarget:null,editingEqDetails:null});
+    } else {
+      set({eqs:[...S.eqs,{...eq,qty:1,zona:'',nota:''}],modal:null,pickerTarget:null,editingEqDetails:null});
+    }
+  });
+
+  // EDITOR
+  q('#btn-editor')?.addEventListener('click',()=>set({modal:'editor'}));
+  q('#editor-search')?.addEventListener('input',e=>{
+    const v=e.target.value.toLowerCase();
+    qa('#editor-tbody tr').forEach(tr=>{tr.style.display=(tr.dataset.row||'').includes(v)?'':'none';});
+  });
+  q('#save-prices')?.addEventListener('click',()=>{
+    const updated=S.catalog.map(eq=>{
+      const lI=document.querySelector(`.price-l[data-id="${eq.id}"]`);
+      const eI=document.querySelector(`.price-e[data-id="${eq.id}"]`);
+      const pL=lI?parseFloat(lI.value)||eq.pL:eq.pL;
+      const pE=eI&&eI.value?parseFloat(eI.value)||null:null;
+      return{...eq,pL,pE};
+    });
+    saveCat(updated);set({catalog:updated,modal:null});
+    alert('✅ Precios guardados en tu navegador.');
+  });
+  q('#export-csv')?.addEventListener('click',()=>{
+    const rows=[['ID','Marca','Modelo','Tipo','SF','Voltaje','Toneladas','SEER','WiFi','Precio Local','Precio Foraneo']];
+    S.catalog.forEach(x=>rows.push([x.id,x.m,x.mod,x.tipo,x.sf,x.v,x.t,x.seer,x.wifi?'Si':'No',x.pL,x.pE||'']));
+    const csv=rows.map(r=>r.join(',')).join('\n');
+    const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='catalogo_CIM.csv';a.click();
+  });
+  q('#reset-prices')?.addEventListener('click',()=>{if(confirm('¿Restaurar todos los precios predeterminados?')){saveCat(BASE_CAT);set({catalog:BASE_CAT,modal:null});}});
+
+  // Close modal
+  q('#close-modal')?.addEventListener('click',()=>set({modal:null,pickerTarget:null}));
+}
+
+render();
+</script>
+</body>
+</html>
