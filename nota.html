@@ -29,13 +29,15 @@ button{font-family:inherit;cursor:pointer;border:none;transition:all .15s}
   .no-print{display:none!important}
   body{background:#fff}
   #print-area{padding:0!important;border:none!important;border-radius:0!important}
+  #app>div{min-height:auto!important;padding-bottom:0!important}
   @page{margin:1.5cm;size:A4}
 }
 </style>
 </head>
 <body>
 <div id="app"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 // ═══════════ CONSTANTS ═══════════
 const N='#071740',G='#6ec25b',L='#f0f7ee';
@@ -503,16 +505,133 @@ function initSignaturePads(){
   setupCanvas(document.getElementById('sig-entrega'),S.firmaEntrega,url=>{S.firmaEntrega=url;});
 }
 
-// ═══════════ PDF GENERATION ═══════════
-async function makePdfBlob(){
-  const el=document.getElementById('print-area');
-  const opt={margin:10,filename:S.folio+'.pdf',image:{type:'jpeg',quality:0.95},html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
-  return await html2pdf().set(opt).from(el).outputPdf('blob');
+// ═══════════ PDF GENERATION (jsPDF, siempre 1 hoja) ═══════════
+const PDF_N=[7,23,64],PDF_G=[110,194,91];
+
+function renderPdfDoc(fs){
+  const {jsPDF}=window.jspdf;
+  const q=QUOTERS[S.quoter];
+  const saldo=S.totalCotizado>0?S.totalCotizado-totalItems():null;
+  const k=fs/9;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const pw=210,marginX=14;let y=14+2*k;
+
+  doc.setFont('times','italic');doc.setFontSize(fs+3);doc.setTextColor(...PDF_N);
+  doc.text('Climas',marginX,y);
+  doc.setDrawColor(...PDF_G);doc.setLineWidth(0.8);
+  doc.line(marginX+16,y-3.2,marginX+58,y-3.2);
+  doc.setFont('helvetica','bold');doc.setFontSize(fs+11);
+  doc.setTextColor(...PDF_G);doc.text('In',marginX,y+9*k);
+  const inW=doc.getTextWidth('In');
+  doc.setTextColor(...PDF_N);doc.text('verter',marginX+inW,y+9*k);
+  doc.setFont('times','normal');doc.setFontSize(fs+1);
+  doc.text('Monterrey',marginX+3,y+13.5*k);
+
+  doc.setFont('helvetica','bold');doc.setFontSize(fs+3);doc.setTextColor(...PDF_N);
+  doc.text(docLabel().toUpperCase(),pw-marginX,y,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(fs-1);doc.setTextColor(80,80,80);
+  doc.text('Folio: '+S.folio,pw-marginX,y+5*k,{align:'right'});
+  doc.text('Fecha: '+today,pw-marginX,y+9.5*k,{align:'right'});
+
+  y+=18*k;
+  doc.setDrawColor(...PDF_G);doc.setLineWidth(1);doc.line(marginX,y,pw-marginX,y);
+  y+=8*k;
+
+  const colW=(pw-marginX*2)/2;
+  doc.setFont('helvetica','bold');doc.setFontSize(fs-2);doc.setTextColor(130,130,130);
+  doc.text('CLIENTE',marginX,y);
+  doc.text('ENTREGA / COBRA',marginX+colW,y);
+  y+=5*k;
+  doc.setFont('helvetica','bold');doc.setFontSize(fs+1);doc.setTextColor(...PDF_N);
+  doc.text(S.cli.nombre||'—',marginX,y);
+  doc.text(q.nombre,marginX+colW,y);
+  y+=4.5*k;
+  doc.setFont('helvetica','normal');doc.setFontSize(fs-1);doc.setTextColor(90,90,90);
+  if(S.cli.tel) doc.text(S.cli.tel,marginX,y);
+  doc.text(q.tel,marginX+colW,y);
+  y+=7*k;
+
+  doc.autoTable({
+    startY:y,
+    margin:{left:marginX,right:marginX},
+    head:[['Concepto','Cant.','Precio unit.','Importe']],
+    body:S.items.map(it=>[it.desc+(it.specs?'\n'+it.specs:''),String(it.cantidad),fmt(it.precio),fmt(it.precio*it.cantidad)]),
+    theme:'grid',
+    styles:{fontSize:fs-1,cellPadding:Math.max(0.8,fs/6),textColor:[30,30,30],lineColor:[230,230,230]},
+    headStyles:{fillColor:PDF_N,textColor:255,fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[249,249,249]},
+    columnStyles:{1:{halign:'center',cellWidth:16},2:{halign:'right',cellWidth:30},3:{halign:'right',cellWidth:30,fontStyle:'bold'}},
+  });
+  y=doc.lastAutoTable.finalY+8*k;
+
+  const tx=pw-marginX;
+  doc.setFont('helvetica','normal');doc.setFontSize(fs);doc.setTextColor(60,60,60);
+  doc.text('Subtotal',tx-45,y);
+  doc.setFont('helvetica','bold');doc.text(fmt(totalItems()),tx,y,{align:'right'});
+  y+=5.5*k;
+  if(saldo!==null){
+    doc.setFont('helvetica','normal');doc.setTextColor(120,120,120);doc.setFontSize(fs-1);
+    doc.text('Total cotizado',tx-45,y);doc.text(fmt(S.totalCotizado),tx,y,{align:'right'});
+    y+=5.5*k;
+    doc.setDrawColor(...PDF_N);doc.setLineWidth(0.5);doc.line(tx-50,y-3.5*k,tx,y-3.5*k);
+    doc.setFont('helvetica','bold');doc.setFontSize(fs+1);
+    doc.setTextColor(...(saldo>0?[200,0,0]:PDF_G));
+    doc.text('Saldo pendiente',tx-45,y+1);doc.text(fmt(saldo),tx,y+1,{align:'right'});
+    y+=7*k;
+  }
+  doc.setFont('helvetica','normal');doc.setFontSize(fs-2);doc.setTextColor(130,130,130);
+  doc.text('Forma de pago: '+(PAGOS.find(p=>p.id===S.formaPago)?.l.replace(/^\S+\s/,'')||''),tx,y,{align:'right'});
+  y+=8*k;
+
+  if(S.notas){
+    doc.setFillColor(249,249,249);
+    doc.setFontSize(fs-1);
+    const notasLines=doc.splitTextToSize('Notas: '+S.notas,pw-marginX*2-8);
+    const boxH=notasLines.length*4.2*k+6*k;
+    doc.rect(marginX,y,pw-marginX*2,boxH,'F');
+    doc.setTextColor(80,80,80);
+    doc.text(notasLines,marginX+4,y+5*k);
+    y+=boxH+8*k;
+  }
+
+  const sigY=y+18*k;
+  const sigW=70,sigH=16*k;
+  if(S.firmaCliente){try{doc.addImage(S.firmaCliente,'PNG',marginX,sigY-sigH-2,sigW,sigH,undefined,'FAST');}catch(e){}}
+  if(S.firmaEntrega){try{doc.addImage(S.firmaEntrega,'PNG',pw-marginX-sigW,sigY-sigH-2,sigW,sigH,undefined,'FAST');}catch(e){}}
+  doc.setDrawColor(50,50,50);doc.setLineWidth(0.3);
+  doc.line(marginX,sigY,marginX+sigW,sigY);
+  doc.line(pw-marginX-sigW,sigY,pw-marginX,sigY);
+  doc.setFont('helvetica','normal');doc.setFontSize(fs-2);doc.setTextColor(80,80,80);
+  doc.text('Firma del cliente',marginX+35,sigY+4*k,{align:'center'});
+  doc.text(S.cli.nombre||'',marginX+35,sigY+8*k,{align:'center'});
+  doc.text('Firma de quien entrega',pw-marginX-35,sigY+4*k,{align:'center'});
+  doc.text(q.nombre,pw-marginX-35,sigY+8*k,{align:'center'});
+  y=sigY+14*k;
+
+  doc.setDrawColor(230,230,230);doc.line(marginX,y,pw-marginX,y);
+  doc.setFontSize(Math.max(5,fs-3));doc.setTextColor(160,160,160);
+  doc.text('Climas Inverter Monterrey · Autorizado Carrier · '+q.tel,pw/2,y+4*k,{align:'center'});
+  y+=8*k;
+
+  return {doc,finalY:y,pages:doc.internal.getNumberOfPages()};
 }
+
+function buildPdfDoc(){
+  const sizes=[9,8,7,6.5,6,5.5];
+  let last=null;
+  for(const fs of sizes){
+    const r=renderPdfDoc(fs);
+    last=r;
+    if(r.finalY<=283&&r.pages===1) return r.doc;
+  }
+  return last.doc;
+}
+
 async function sharePdf(){
   try{
-    if(typeof html2pdf==='undefined'){alert('No se pudo cargar el generador de PDF (revisa tu conexión a internet). Usa el botón de Imprimir como alternativa.');return;}
-    const blob=await makePdfBlob();
+    if(typeof window.jspdf==='undefined'){alert('No se pudo cargar el generador de PDF (revisa tu conexión a internet). Usa el botón de Imprimir como alternativa.');return;}
+    const doc=buildPdfDoc();
+    const blob=doc.output('blob');
     const file=new File([blob],S.folio+'.pdf',{type:'application/pdf'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
       await navigator.share({files:[file],title:S.folio,text:'Nota de compra - Climas Inverter Monterrey'});
@@ -525,10 +644,9 @@ async function sharePdf(){
 }
 async function downloadPdf(){
   try{
-    if(typeof html2pdf==='undefined'){alert('No se pudo cargar el generador de PDF. Usa Imprimir.');return;}
-    const el=document.getElementById('print-area');
-    const opt={margin:10,filename:S.folio+'.pdf',image:{type:'jpeg',quality:0.95},html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
-    await html2pdf().set(opt).from(el).save();
+    if(typeof window.jspdf==='undefined'){alert('No se pudo cargar el generador de PDF. Usa Imprimir.');return;}
+    const doc=buildPdfDoc();
+    doc.save(S.folio+'.pdf');
   }catch(e){alert('Error generando PDF: '+e.message);}
 }
 
