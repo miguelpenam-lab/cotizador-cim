@@ -203,13 +203,26 @@ const today=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',ye
 const uid=()=>Math.random().toString(36).slice(2);
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
+// ═══════════ FOLIO SECUENCIAL ═══════════
+function nextFolio(prefix){
+  const year=new Date().getFullYear();
+  const key='cim_folio_seq_'+prefix;
+  let data={year:year,seq:0};
+  try{const s=localStorage.getItem(key);if(s)data=JSON.parse(s);}catch(e){}
+  if(data.year!==year){data.year=year;data.seq=0;}
+  data.seq+=1;
+  try{localStorage.setItem(key,JSON.stringify(data));}catch(e){}
+  return prefix+'-'+year+'-'+String(data.seq).padStart(3,'0');
+}
+
 // ═══════════ STATE ═══════════
-let S={
+function freshState(){
+return {
   step:0,
   tipo:'entrega',
   categoria:'equipos',
   quoter:'miguel',
-  folio:'NC-'+new Date().getFullYear()+'-'+String(Math.floor(Math.random()*900)+100).padStart(3,'0'),
+  folio:nextFolio('NC'),
   cli:{nombre:'',tel:'',dir:'',correo:''},
   items:[],
   formaPago:'efectivo',
@@ -220,8 +233,11 @@ let S={
   catalog:BASE_CAT,
   modal:null,pickerSearch:'',
 };
+}
+let S=freshState();
 
 function set(patch){Object.assign(S,patch);render();}
+function resetState(){S=freshState();seedDefaultItem(S.tipo);render();}
 
 function seedDefaultItem(tipo){
   if(S.items.length>0) return;
@@ -419,6 +435,7 @@ function s4(){
     <button id="btn-pdf-share" class="btn-n" style="width:100%;font-size:14px">📤 Generar PDF y Compartir</button>
     <button id="btn-pdf-download" class="btn-ghost" style="width:100%;font-size:13px">⬇️ Descargar PDF</button>
     <button onclick="window.print()" class="btn-ghost" style="width:100%;font-size:13px">🖨️ Imprimir</button>
+    <button id="btn-new-doc" class="btn-ghost" style="width:100%;font-size:13px">🆕 Nuevo documento</button>
   </div>`;
 }
 
@@ -714,6 +731,10 @@ function attachEvents(){
 
   q('#btn-pdf-share')?.addEventListener('click',sharePdf);
   q('#btn-pdf-download')?.addEventListener('click',downloadPdf);
+
+  q('#btn-new-doc')?.addEventListener('click',()=>{
+    if(confirm('¿Iniciar un documento nuevo? Se perderán los datos actuales no guardados.')) resetState();
+  });
 }
 
 seedDefaultItem(S.tipo);

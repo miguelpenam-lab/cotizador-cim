@@ -255,9 +255,22 @@ function saveCat(d){try{localStorage.setItem('cim4_cat',JSON.stringify(d));}catc
 function loadFavs(){try{const s=localStorage.getItem('cim4_favs');return s?new Set(JSON.parse(s)):new Set(['mv32_220_1','hi220_1','cx220_1']);}catch(e){return new Set(['mv32_220_1','hi220_1','cx220_1']);}}
 function saveFavs(s){try{localStorage.setItem('cim4_favs',JSON.stringify([...s]));}catch(e){}}
 
+// ═══════════ FOLIO SECUENCIAL ═══════════
+function nextFolio(prefix){
+  const year=new Date().getFullYear();
+  const key='cim_folio_seq_'+prefix;
+  let data={year:year,seq:0};
+  try{const s=localStorage.getItem(key);if(s)data=JSON.parse(s);}catch(e){}
+  if(data.year!==year){data.year=year;data.seq=0;}
+  data.seq+=1;
+  try{localStorage.setItem(key,JSON.stringify(data));}catch(e){}
+  return prefix+'-'+year+'-'+String(data.seq).padStart(3,'0');
+}
+
 // ═══════════ STATE ═══════════
-let S={
-  step:0,tipo:'T1',modo:'opciones',quoter:'miguel',folio:'CIM-'+new Date().getFullYear()+'-'+String(Math.floor(Math.random()*900)+100).padStart(3,'0'),
+function freshState(){
+return {
+  step:0,tipo:'T1',modo:'opciones',quoter:'miguel',folio:nextFolio('CIM'),
   foraneo:false,esDepto:false,usaZonas:false,
   cli:{nombre:'',empresa:'',tel:'',correo:'',dir:'',ciudad:'Monterrey, N.L.',ref:''},
   zonas:[],eqs:[],insts:[],svcs:[],
@@ -283,8 +296,11 @@ let S={
   catalog:loadCat(),favs:loadFavs(),
   modal:null,pickerTarget:null,pickerSearch:'',
 };
+}
+let S=freshState();
 
 function set(patch){Object.assign(S,patch);render();}
+function resetState(){S=freshState();render();}
 
 function syncForm(){
   const v=id=>{const e=document.getElementById(id);return e?e.value:'';};
@@ -840,6 +856,7 @@ function s6(){
   <div class="no-print">
     ${waBtn}
     <button onclick="window.print()" class="btn-n" style="width:100%;margin-bottom:8px;font-size:14px">🖨️ Imprimir / Guardar PDF</button>
+    <button id="btn-new-doc" class="btn-ghost" style="width:100%;margin-bottom:8px;font-size:13px">🆕 Nuevo documento</button>
     <div style="padding:10px 14px;background:#fffdf2;border:1px solid #f0d060;border-radius:8px;font-size:12px;color:#7a6000"><strong>Flujo acordado:</strong> Revisa aquí antes de enviar. Cuando esté lista escribe <strong>"listo para enviar"</strong> en el chat con Claude para generar el Word/PDF. O usa el botón de imprimir — sin gastar tokens.</div>
   </div>`;
 }
@@ -1306,6 +1323,10 @@ function attachEvents(){
 
   // Close modal
   q('#close-modal')?.addEventListener('click',()=>set({modal:null,pickerTarget:null}));
+
+  q('#btn-new-doc')?.addEventListener('click',()=>{
+    if(confirm('¿Iniciar un documento nuevo? Se perderán los datos actuales no guardados.')) resetState();
+  });
 }
 
 render();
