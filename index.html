@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Cotizador CIM v6.13</title>
+<title>Cotizador CIM v6.14</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f6f9;color:#1a1a1a;font-size:14px}
@@ -36,15 +36,27 @@ button{font-family:inherit;cursor:pointer;border:none;transition:all .15s}
   .no-print{display:none!important}
   body{background:#fff!important;margin:0;padding:0}
   #app>div{padding-bottom:0!important;min-height:unset!important;background:#fff!important}
-  @page{margin:0.7cm 1cm;size:A4 portrait}
-  #print-area{padding:0!important}
+
+  /* Quitar header/footer de Safari (URL, fecha, página) */
+  @page{margin:0;size:A4 portrait}
+
+  /* Compensar márgenes eliminados con padding en el documento */
+  #print-area{padding:0.6cm 0.9cm!important}
   .print-doc{border:none!important;border-radius:0!important;padding:0!important;margin:0!important;box-shadow:none!important}
-  .print-doc *{font-size:8.5pt!important;line-height:1.25!important}
-  .print-doc strong{font-size:8.5pt!important}
+
+  /* Fuentes compactas para entrar en una hoja */
+  .print-doc *{font-size:7.5pt!important;line-height:1.2!important}
+  .print-doc strong{font-size:7.5pt!important}
+
+  /* Evitar cortes */
   table{page-break-inside:avoid!important;break-inside:avoid!important;width:100%!important}
   tr{page-break-inside:avoid!important;break-inside:avoid!important}
-  .print-doc td,.print-doc th{padding:3px 5px!important;font-size:8pt!important}
-  .seer-badge,.wifi-badge{font-size:6.5pt!important;padding:0 3px!important}
+
+  /* Celdas compactas */
+  .print-doc td,.print-doc th{padding:2px 4px!important;font-size:7pt!important}
+  .seer-badge,.wifi-badge{font-size:6pt!important;padding:0 2px!important}
+
+  /* Mantener colores */
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
 /* ── MOBILE (≤600px) ───────────────────────── */
@@ -924,7 +936,17 @@ function s6(){
   </div>
   <div class="no-print">
     ${waBtn}
-    <button onclick="window.print()" class="btn-n" style="width:100%;margin-bottom:8px;font-size:14px">🖨️ Imprimir / Guardar PDF</button>
+    <button onclick="(function(){
+  var nombre=S&&S.cli&&S.cli.nombre?S.cli.nombre.trim():'';
+  var folio=S&&S.folio?S.folio:'CIM';
+  var suggested=nombre?('Cotización '+nombre+' '+folio):(folio);
+  var filename=prompt('Nombre del archivo PDF:',suggested);
+  if(filename===null)return;
+  var old=document.title;
+  document.title=filename||suggested;
+  window.print();
+  setTimeout(function(){document.title=old;},2000);
+})()" class="btn-n" style="width:100%;margin-bottom:8px;font-size:14px">🖨️ Imprimir / Guardar PDF</button>
     <div style="padding:10px 14px;background:#fffdf2;border:1px solid #f0d060;border-radius:8px;font-size:12px;color:#7a6000"><strong>Flujo acordado:</strong> Revisa aquí antes de enviar. Cuando esté lista escribe <strong>"listo para enviar"</strong> en el chat con Claude para generar el Word/PDF. O usa el botón de imprimir — sin gastar tokens.</div>
   </div>`;
 }
@@ -1162,7 +1184,17 @@ function render(){
         ?`<button id="btn-next" class="btn-g" style="min-width:110px">Siguiente →</button>`
         :`<div style="display:flex;gap:8px">
             <button id="btn-nueva" class="btn-ghost" style="font-size:12px;padding:8px 12px">+ Nueva</button>
-            <button onclick="window.print()" class="btn-n" style="font-size:13px">🖨️ PDF</button>
+            <button onclick="(function(){
+  var nombre=S&&S.cli&&S.cli.nombre?S.cli.nombre.trim():'';
+  var folio=S&&S.folio?S.folio:'CIM';
+  var suggested=nombre?('Cotización '+nombre+' '+folio):(folio);
+  var filename=prompt('Nombre del archivo PDF:',suggested);
+  if(filename===null)return;
+  var old=document.title;
+  document.title=filename||suggested;
+  window.print();
+  setTimeout(function(){document.title=old;},2000);
+})()" class="btn-n" style="font-size:13px">🖨️ PDF</button>
           </div>`
       }
     </div>
