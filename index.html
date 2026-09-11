@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Cotizador CIM v6.15</title>
+<title>Cotizador CIM v6.16</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f6f9;color:#1a1a1a;font-size:14px}
@@ -34,26 +34,53 @@ button{font-family:inherit;cursor:pointer;border:none;transition:all .15s}
 .rec-badge{background:#071740;color:#6ec25b;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.3px}
 @media print{
   .no-print{display:none!important}
-  body{background:#fff!important;margin:0;padding:0}
+  body{background:#fff!important;margin:0!important;padding:0!important}
   #app>div{padding-bottom:0!important;min-height:unset!important;background:#fff!important}
 
-  /* Quitar header/footer de Safari (URL, fecha, página) */
-  @page{margin:0;size:A4 portrait}
+  /* Quitar header/footer Safari — el usuario debe desactivar en opciones de impresión */
+  @page{margin:0.5cm 0.8cm;size:A4 portrait}
 
-  /* Compensar márgenes eliminados con padding en el documento */
-  #print-area{padding:0.6cm 0.9cm!important}
-  .print-doc{border:none!important;border-radius:0!important;padding:0!important;margin:0!important;box-shadow:none!important}
+  #print-area{padding:0!important}
+  .print-doc{
+    border:none!important;border-radius:0!important;
+    padding:6px!important;margin:0!important;box-shadow:none!important
+  }
 
-  /* Fuentes compactas para entrar en una hoja */
-  .print-doc *{font-size:7.5pt!important;line-height:1.2!important}
-  .print-doc strong{font-size:7.5pt!important}
+  /* Fuentes compactas */
+  .print-doc *{font-size:7.8pt!important;line-height:1.2!important}
+  .print-doc strong{font-size:7.8pt!important}
+  .print-doc h3,.print-doc b{font-size:8pt!important}
 
-  /* Evitar cortes */
-  table{page-break-inside:avoid!important;break-inside:avoid!important;width:100%!important}
+  /* CRÍTICO: anular el CSS mobile que rompe las tablas en print */
+  table{
+    display:table!important;
+    overflow-x:visible!important;
+    white-space:normal!important;
+    width:100%!important;
+    page-break-inside:avoid!important;
+    break-inside:avoid!important
+  }
   tr{page-break-inside:avoid!important;break-inside:avoid!important}
+  td,th{
+    display:table-cell!important;
+    white-space:normal!important;
+    padding:2px 5px!important;
+    font-size:7.5pt!important
+  }
 
-  /* Celdas compactas */
-  .print-doc td,.print-doc th{padding:2px 4px!important;font-size:7pt!important}
+  /* Compactar todos los paddings */
+  .print-doc [style*="padding:18px"]{padding:5px!important}
+  .print-doc [style*="padding:14px"]{padding:4px!important}
+  .print-doc [style*="padding:12px"]{padding:4px!important}
+  .print-doc [style*="padding:10px"]{padding:3px!important}
+  .print-doc [style*="padding:9px"]{padding:3px!important}
+  .print-doc [style*="margin-bottom:12px"]{margin-bottom:3px!important}
+  .print-doc [style*="margin-bottom:10px"]{margin-bottom:3px!important}
+  .print-doc [style*="margin-bottom:8px"]{margin-bottom:2px!important}
+  .print-doc [style*="margin-top:12px"]{margin-top:3px!important}
+  .print-doc [style*="margin-top:10px"]{margin-top:3px!important}
+
+  /* Badges más pequeños */
   .seer-badge,.wifi-badge{font-size:6pt!important;padding:0 2px!important}
 
   /* Mantener colores */
