@@ -852,7 +852,7 @@ function s6(){
           ${S.tipo!=='T2'?`<th style="padding:5px 7px;text-align:right">Total</th>`:''}
         </tr></thead>
         <tbody>${S.eqs.map((x,i)=>{const p=eqPrice(x,S.foraneo);return`<tr style="background:${i%2?'#f9f9f9':'#fff'};border-bottom:1px solid #f0f0f0">
-          <td style="padding:5px 7px">${x.zona?`<div style="font-size:10px;color:#888">${esc(x.zona)}</div>`:''}<strong>${esc(x.m)}</strong>${x.mod&&x.mod!==x.m?` <span style="color:#aaa;font-size:10px">${x.mod}</span>`:''}${x.desc?`<div style="font-size:10px;color:#555;margin-top:2px">${esc(x.desc)}</div>`:''}${x.nota?`<div style="font-size:10px;color:#888;font-style:italic">${esc(x.nota)}</div>`:''}<div style="margin-top:2px"><span class="seer-badge">${x.seer} SEER</span> ${x.wifi?'<span class="wifi-badge">WiFi</span>':''}</div></td>
+          <td style="padding:5px 7px">${x.zona?`<div style="font-size:10px;color:#888">${esc(x.zona)}</div>`:''}<strong>${esc(x.m)}</strong>${x.mod&&x.mod!==x.m?` <span style="color:#aaa;font-size:10px">${x.mod}</span>`:''}<div style="font-size:10px;color:#555;margin-top:1px">${x.t}T · ${x.v} · ${x.sf==='FC'?'Frío-Calor':'Solo Frío'}</div>${x.desc?`<div style="font-size:10px;color:#555;margin-top:2px">${esc(x.desc)}</div>`:''}${x.nota?`<div style="font-size:10px;color:#888;font-style:italic">${esc(x.nota)}</div>`:''}<div style="margin-top:2px"><span class="seer-badge">${x.seer} SEER</span> ${x.wifi?'<span class="wifi-badge">WiFi</span>':''}</div></td>
           <td style="padding:5px 7px;text-align:center">${x.seer}</td>
           <td style="padding:5px 7px;text-align:center">${x.qty}</td>
           <td style="padding:5px 7px;text-align:right">${fmt(p)}</td>
