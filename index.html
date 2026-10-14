@@ -577,7 +577,7 @@ function s2single(){
     return `<div style="background:${L};border:1px solid ${G}44;border-radius:8px;padding:9px 11px;margin-bottom:6px;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
       <div style="flex:1;min-width:140px">
         <div style="font-size:12px;font-weight:700;color:${N}">${x.m} <span style="font-size:11px;font-weight:400;color:#888">${x.mod||''}</span></div>
-        <div style="font-size:11px;color:#555">${x.t}T · ${x.v} · ${x.sf==='FC'?'Frío-Calor':'Solo Frío'}</div>
+        <div style="font-size:11px;color:#555">${x.cat&&x.cat!=='Mini Split'?x.cat+' · ':''} ${x.t}T · ${x.v} · ${x.sf==='FC'?'Frío-Calor':'Solo Frío'}</div>
         ${x.desc?`<div style="font-size:11px;color:#666;margin-top:2px;font-style:italic">${esc(x.desc)}</div>`:''}
         <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap"><span class="seer-badge">${x.seer} SEER</span>${x.wifi?'<span class="wifi-badge">WiFi</span>':''}</div>
         <button class="eq-edit-btn" data-i="${i}" style="background:none;border:none;font-size:11px;color:#888;cursor:pointer;padding:2px 0;margin-top:2px">✏️ editar datos</button>
@@ -852,7 +852,7 @@ function s6(){
           ${S.tipo!=='T2'?`<th style="padding:5px 7px;text-align:right">Total</th>`:''}
         </tr></thead>
         <tbody>${S.eqs.map((x,i)=>{const p=eqPrice(x,S.foraneo);return`<tr style="background:${i%2?'#f9f9f9':'#fff'};border-bottom:1px solid #f0f0f0">
-          <td style="padding:5px 7px">${x.zona?`<div style="font-size:10px;color:#888">${esc(x.zona)}</div>`:''}<strong>${esc(x.m)}</strong>${x.mod&&x.mod!==x.m?` <span style="color:#aaa;font-size:10px">${x.mod}</span>`:''}<div style="font-size:10px;color:#555;margin-top:1px">${x.t}T · ${x.v} · ${x.sf==='FC'?'Frío-Calor':'Solo Frío'}</div>${x.desc?`<div style="font-size:10px;color:#555;margin-top:2px">${esc(x.desc)}</div>`:''}${x.nota?`<div style="font-size:10px;color:#888;font-style:italic">${esc(x.nota)}</div>`:''}<div style="margin-top:2px"><span class="seer-badge">${x.seer} SEER</span> ${x.wifi?'<span class="wifi-badge">WiFi</span>':''}</div></td>
+          <td style="padding:5px 7px">${x.zona?`<div style="font-size:10px;color:#888">${esc(x.zona)}</div>`:''}<strong>${esc(x.m)}</strong>${x.mod?` <span style="color:#aaa;font-size:10px">${x.mod}</span>`:''}<div style="font-size:10px;color:#555;margin-top:1px">${x.cat&&x.cat!=='Mini Split'?x.cat+' · ':''} ${x.t}T · ${x.v} · ${x.sf==='FC'?'Frío-Calor':'Solo Frío'}</div>${x.desc?`<div style="font-size:10px;color:#555;margin-top:2px">${esc(x.desc)}</div>`:''}${x.nota?`<div style="font-size:10px;color:#888;font-style:italic">${esc(x.nota)}</div>`:''}<div style="margin-top:2px"><span class="seer-badge">${x.seer} SEER</span> ${x.wifi?'<span class="wifi-badge">WiFi</span>':''}</div></td>
           <td style="padding:5px 7px;text-align:center">${x.seer}</td>
           <td style="padding:5px 7px;text-align:center">${x.qty}</td>
           <td style="padding:5px 7px;text-align:right">${fmt(p)}</td>
@@ -1034,7 +1034,7 @@ function customModal(){
     <div style="display:flex;flex-wrap:wrap;gap:10px">
       <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Marca *</label><input id="c_marca" type="text" placeholder="Daikin, Hitachi, Midea..." value="${esc(e?.m||'')}"></div>
       <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Modelo</label><input id="c_modelo" type="text" placeholder="RXYQ8T..." value="${esc(e?.mod||'')}"></div>
-      <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Tipo</label><select id="c_tipo">${['Mini Split','Cassette','Fan Coil','Central','VRF / VRV','Piso-Techo','Ducto','Otro'].map(o=>`<option ${(e?.mod||''===o)?'selected':''}>${o}</option>`).join('')}</select></div>
+      <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Tipo</label><select id="c_tipo">${['Mini Split','Cassette','Fan Coil','Central','VRF / VRV','Piso-Techo','Ducto','Otro'].map(o=>`<option ${(e?.cat||'Mini Split')===o?'selected':''}>${o}</option>`).join('')}</select></div>
       <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Modo</label><select id="c_sf"><option value="FC" ${(!e||e.sf==='FC')?'selected':''}>Frío-Calor</option><option value="SF" ${e?.sf==='SF'?'selected':''}>Solo Frío</option></select></div>
       <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Voltaje</label><select id="c_v"><option ${(!e||e.v==='110V')?'selected':''}>110V</option><option ${e?.v==='220V'?'selected':''}>220V</option><option ${e?.v==='220V Monofásico'?'selected':''}>220V Monofásico</option><option ${e?.v==='440V Trifásico'?'selected':''}>440V Trifásico</option></select></div>
       <div style="flex:0 0 calc(50% - 6px);display:flex;flex-direction:column;gap:3px"><label style="font-size:11px;color:#666;font-weight:500">Toneladas *</label><input id="c_t" type="number" step="0.5" min="0.5" placeholder="1.5" value="${e?.t||''}"></div>
@@ -1428,7 +1428,7 @@ function attachEvents(){
     const marca=gv('c_marca');const t=parseFloat(gv('c_t'));const pl=parseFloat(gv('c_pl'));
     if(!marca||!t||!pl){alert('Marca, toneladas y precio local son requeridos.');return;}
     const pe_v=parseFloat(gv('c_pe'));
-    const eq={id:'custom_'+uid(),m:marca,mod:gv('c_modelo')||gv('c_tipo'),sf:document.getElementById('c_sf')?.value||'FC',v:document.getElementById('c_v')?.value||'220V',t,seer:parseFloat(gv('c_seer'))||0,wifi:document.getElementById('c_wifi')?.checked||false,pL:pl,pE:pe_v||null,tipo:'inv',desc:gv('c_desc'),precioOverride:null};
+    const eq={id:'custom_'+uid(),m:marca,mod:gv('c_modelo'),cat:document.getElementById('c_tipo')?.value||'Mini Split',sf:document.getElementById('c_sf')?.value||'FC',v:document.getElementById('c_v')?.value||'220V',t,seer:parseFloat(gv('c_seer'))||0,wifi:document.getElementById('c_wifi')?.checked||false,pL:pl,pE:pe_v||null,tipo:'inv',desc:gv('c_desc'),precioOverride:null};
     if(S.editingEqDetails!=null){
       const idx=S.editingEqDetails;const prev=S.eqs[idx];
       set({eqs:S.eqs.map((x,i)=>i===idx?{...prev,...eq,id:prev.id,qty:prev.qty,precioOverride:prev.precioOverride}:x),modal:null,pickerTarget:null,editingEqDetails:null});
